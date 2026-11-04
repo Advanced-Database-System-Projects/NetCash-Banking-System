@@ -1,0 +1,41 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Client Management</title>
+</head>
+<body>
+
+    {% if is_update %}
+        <h1>Edit Client</h1>
+    {% else %}
+        <h1>Register New Client</h1>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {% if not is_update %}
+            <h3>Account Information</h3>
+            {{ user_form.as_p }}
+        {% endif %}
+
+        <h3>Client Information</h3>
+        {{ profile_form.as_p }}
+
+        <button type="submit">
+            {% if is_update %}
+                Save Changes
+            {% else %}
+                Register Client
+            {% endif %}
+        </button>
+    </form>
+
+    <p>
+        <a href="{% url 'client_list' %}">Back to Client List</a>
+    </p>
+
+</body>
+</html>
