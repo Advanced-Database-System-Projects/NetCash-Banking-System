@@ -20,7 +20,7 @@
             border-radius: 10px;
         }
 
-        h1 {
+        h1, h3 {
             color: #17365d;
         }
 
@@ -33,22 +33,47 @@
             font-weight: bold;
         }
 
-        a {
-            display: inline-block;
-            margin-top: 20px;
-            color: #17365d;
+        .decision {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f0f5fa;
+            border-radius: 8px;
         }
 
         input {
-            padding: 8px;
+            padding: 10px;
             margin: 10px 0;
-            width: 200px;
+            width: 220px;
         }
 
         button {
             padding: 10px 15px;
             cursor: pointer;
             margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .approve {
+            background: #198754;
+            color: white;
+        }
+
+        .reject {
+            background: #dc3545;
+            color: white;
+        }
+
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            color: #17365d;
+        }
+
+        .message {
+            padding: 10px;
+            background: #e8f5e9;
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -61,7 +86,7 @@
 
     {% if messages %}
         {% for message in messages %}
-            <p>{{ message }}</p>
+            <p class="message">{{ message }}</p>
         {% endfor %}
     {% endif %}
 
@@ -118,8 +143,9 @@
         {% endif %}
     </div>
 
-    {% if application.status == "Pending" %}
-        {% if user.roles.roles_name == "Admin" or user.roles.roles_name == "Loan Officer" %}
+    {% if application.status == "Pending" and user.is_staff %}
+
+        <div class="decision">
 
             <h3>Application Decision</h3>
 
@@ -130,6 +156,7 @@
                 <label for="annual_interest_rate">
                     Annual Interest Rate (%):
                 </label>
+
                 <br>
 
                 <input
@@ -137,14 +164,16 @@
                     id="annual_interest_rate"
                     name="annual_interest_rate"
                     min="0"
+                    max="999.99"
                     step="0.01"
-                    placeholder="Enter interest rate"
+                    placeholder="Example: 5.00"
                     required
                 >
 
                 <br>
 
                 <button type="submit"
+                        class="approve"
                         onclick="return confirm('Approve this loan application?');">
                     Approve Application
                 </button>
@@ -155,12 +184,14 @@
                 {% csrf_token %}
 
                 <button type="submit"
+                        class="reject"
                         onclick="return confirm('Reject this loan application?');">
                     Reject Application
                 </button>
             </form>
 
-        {% endif %}
+        </div>
+
     {% endif %}
 
     <a href="{% url 'loan_application_list' %}">

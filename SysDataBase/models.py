@@ -2,6 +2,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 
 
 # ==========================================
@@ -67,18 +68,27 @@ class Audit_logs(BaseModel):
 # ==========================================
 
 class Client_profile(BaseModel):
+
+    class VerificationStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        VERIFIED = 'Verified', 'Verified'
+        REJECTED = 'Rejected', 'Rejected'
+
     users = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='client_profile'
     )
+
     first_name = models.CharField(max_length=45)
     last_name = models.CharField(max_length=45)
     birth_date = models.DateField()
     address = models.CharField(max_length=150)
+
     monthly_income = models.DecimalField(
         max_digits=12, decimal_places=2
     )
+
     phone_number = models.CharField(max_length=20)
 
     identification_document = models.FileField(
@@ -87,10 +97,40 @@ class Client_profile(BaseModel):
         null=True
     )
 
+    identity_reference = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
+    identity_verification_status = models.CharField(
+        max_length=20,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING
+    )
+
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_clients'
+    )
+
+    verified_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    verification_notes = models.TextField(
+        blank=True
+    )
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-
+    
 # ==========================================
 # SAVINGS ACCOUNT
 # ==========================================
@@ -98,29 +138,38 @@ class Client_profile(BaseModel):
 class Savings_account(BaseModel):
 
     class AccountStatus(models.TextChoices):
+        PENDING_VERIFICATION = 'Pending Verification', 'Pending Verification'
         ACTIVE = 'Active', 'Active'
         INACTIVE = 'Inactive', 'Inactive'
         CLOSED = 'Closed', 'Closed'
 
-    client_profile = models.ForeignKey(
+    client_profile = models.OneToOneField(
         Client_profile,
         on_delete=models.PROTECT,
-        related_name='savings_accounts'
+        related_name='savings_account'
     )
 
-    account_no = models.CharField(max_length=20, unique=True)
-    status = models.CharField(
+    account_no = models.CharField(
         max_length=20,
+        unique=True
+    )
+
+    status = models.CharField(
+        max_length=25,
         choices=AccountStatus.choices,
-        default=AccountStatus.ACTIVE
+        default=AccountStatus.PENDING_VERIFICATION
     )
 
     current_balance = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12,
+        decimal_places=2,
+        default=0
     )
 
     annual_interest_rate = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0
+        max_digits=5,
+        decimal_places=2,
+        default=0
     )
 
     opened_at = models.DateTimeField(auto_now_add=True)
@@ -128,10 +177,10 @@ class Savings_account(BaseModel):
     def __str__(self):
         return self.account_no
 
-
 # ==========================================
 # SAVINGS TRANSACTIONS
 # ==========================================
+
 
 class Savings_transaction(BaseModel):
 
@@ -139,6 +188,11 @@ class Savings_transaction(BaseModel):
         DEPOSIT = 'Deposit', 'Deposit'
         WITHDRAWAL = 'Withdrawal', 'Withdrawal'
         INTEREST = 'Interest', 'Interest'
+
+    class TransactionStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        APPROVED = 'Approved', 'Approved'
+        REJECTED = 'Rejected', 'Rejected'
 
     savings_account = models.ForeignKey(
         Savings_account,
@@ -152,18 +206,25 @@ class Savings_transaction(BaseModel):
     )
 
     reference_number = models.CharField(
-        max_length=50, unique=True
+        max_length=50,
+        unique=True
     )
 
     amount = models.DecimalField(
-        max_digits=12, decimal_places=2
+        max_digits=12,
+        decimal_places=2
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=TransactionStatus.choices,
+        default=TransactionStatus.APPROVED
     )
 
     transaction_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.reference_number
-
 
 # ==========================================
 # LOAN APPLICATION
@@ -398,6 +459,7 @@ class Loan_payments(BaseModel):
 # TRANSACTION RECORDS
 # ==========================================
 
+
 class Transaction_records(BaseModel):
 
     savings_transaction = models.ForeignKey(
@@ -419,19 +481,52 @@ class Transaction_records(BaseModel):
     entry_date = models.DateTimeField(auto_now_add=True)
 
     debit_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12,
+        decimal_places=2,
+        default=0
     )
 
     credit_amount = models.DecimalField(
-        max_digits=12, decimal_places=2, default=0
+        max_digits=12,
+        decimal_places=2,
+        default=0
     )
 
     entry_type = models.CharField(max_length=45)
 
     account_code = models.CharField(max_length=45)
 
+    def clean(self):
+        super().clean()
+
+        if self.debit_amount < 0 or self.credit_amount < 0:
+            raise ValidationError(
+                "Debit and credit amounts cannot be negative."
+            )
+
+        if self.debit_amount > 0 and self.credit_amount > 0:
+            raise ValidationError(
+                "A ledger entry cannot have both debit and credit amounts."
+            )
+
+        if self.debit_amount == 0 and self.credit_amount == 0:
+            raise ValidationError(
+                "A ledger entry must have a debit or credit amount."
+            )
+
+        if not self.savings_transaction and not self.loan_payment:
+            raise ValidationError(
+                "A ledger entry must be linked to a savings transaction or loan payment."
+            )
+
+        if self.savings_transaction and self.loan_payment:
+            raise ValidationError(
+                "A ledger entry cannot belong to both transaction types."
+            )
+
     def __str__(self):
         return self.account_code
+
 
 
 # ==========================================

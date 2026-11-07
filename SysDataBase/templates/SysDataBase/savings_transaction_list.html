@@ -9,7 +9,31 @@
 
     <h1>Savings Transaction History</h1>
     <p>View and monitor all savings deposits and withdrawals.</p>
+    <form method="GET" class="row mb-3">
+        <div class="col-md-6">
+            <input
+                type="text"
+                name="search"
+                class="form-control"
+                placeholder="Search reference, account, or borrower..."
+                value="{{ search_query }}"
+            >
+        </div>
+        
+        <div class="col-md-3">
+            <select name="type" class="form-control">
+                <option value="">All Transaction Types</option>
+                <option value="Deposit" {% if transaction_type == "Deposit" %}selected{% endif %}>Deposit</option>
+                <option value="Withdrawal" {% if transaction_type == "Withdrawal" %}selected{% endif %}>Withdrawal</option>
+                <option value="Interest" {% if transaction_type == "Interest" %}selected{% endif %}>Interest</option>
+            </select>
+        </div>
 
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary">Search</button>
+            <a href="{% url 'savings_transaction_list' %}" class="btn btn-secondary">Reset</a>
+        </div>
+    </form>
     <table border="1" cellpadding="10" cellspacing="0">
         <thead>
             <tr>

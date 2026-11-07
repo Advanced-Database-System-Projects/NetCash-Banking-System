@@ -1,0 +1,94 @@
+
+{% extends 'SysDataBase/base.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Loan Payment History</h2>
+            <p class="text-muted">
+                View and monitor recorded loan payments.
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th>Reference No.</th>
+                            <th>Borrower</th>
+                            <th>Loan ID</th>
+                            <th>Installment</th>
+                            <th>Payment Date</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.reference_number }}</td>
+
+                            <td>
+                                {{ payment.loans.loan_application.client_profile.first_name }}
+                                {{ payment.loans.loan_application.client_profile.last_name }}
+                            </td>
+
+                            <td>{{ payment.loans.id }}</td>
+
+                            <td>
+                                {{ payment.amortization_schedule.installment_no }}
+                            </td>
+
+                            <td>{{ payment.payment_date|date:"M d, Y" }}</td>
+
+                            <td>
+                                ₱{{ payment.amount|floatformat:2 }}
+                            </td>
+
+                            <td>{{ payment.payment_method }}</td>
+
+                            <td>
+                                {% if payment.status == "Completed" %}
+                                    <span class="badge bg-success">
+                                        Completed
+                                    </span>
+                                {% elif payment.status == "Pending" %}
+                                    <span class="badge bg-warning text-dark">
+                                        Pending
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        Failed
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                No payment records found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

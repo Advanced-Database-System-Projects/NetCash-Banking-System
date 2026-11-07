@@ -1,0 +1,62 @@
+
+{% extends 'SysDataBase/base.html' %}
+
+{% block title %}Identity Verification | Banking System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Pending Identity Verification</h1>
+    <p>Review borrower information and uploaded identification documents.</p>
+
+    {% if pending_clients %}
+        {% for client in pending_clients %}
+            <div class="card mb-3 p-3">
+                <h3>{{ client.first_name }} {{ client.last_name }}</h3>
+
+                <p><strong>Username:</strong> {{ client.users.username }}</p>
+                <p><strong>Birth Date:</strong> {{ client.birth_date }}</p>
+                <p><strong>Address:</strong> {{ client.address }}</p>
+                <p><strong>Phone:</strong> {{ client.phone_number }}</p>
+                <p><strong>Monthly Income:</strong> ₱{{ client.monthly_income }}</p>
+                <p><strong>Status:</strong> {{ client.identity_verification_status }}</p>
+
+                <p>
+                    <strong>Identification Document:</strong>
+                    {% if client.identification_document %}
+                        <a href="{{ client.identification_document.url }}" target="_blank">
+                            View Uploaded ID
+                        </a>
+                    {% else %}
+                        No document uploaded
+                    {% endif %}
+                </p>
+
+                <form method="POST"
+                      action="{% url 'identity_verification_update' client.id %}">
+                    {% csrf_token %}
+
+                    <label for="notes-{{ client.id }}">Verification Notes</label>
+                    <textarea
+                        name="verification_notes"
+                        id="notes-{{ client.id }}"
+                        class="form-control"
+                        rows="2"
+                        placeholder="Optional review notes"></textarea>
+
+                    <button type="submit" name="action" value="approve"
+                            class="btn btn-success mt-2">
+                        Approve Identity
+                    </button>
+
+                    <button type="submit" name="action" value="reject"
+                            class="btn btn-danger mt-2">
+                        Reject Identity
+                    </button>
+                </form>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p>There are no pending identity verifications.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path("", views.home_dashboard, name="home_dashboard"),
     path("clients/", views.client_list, name="client_list"),
     path("clients/add/", views.client_create, name="client_create"),
     path(
@@ -46,4 +47,43 @@ urlpatterns = [
     path("loans/records/", views.loan_list, name="loan_list"),
     #temporary path for testing
     path("ui-preview/", views.ui_preview, name="ui_preview"),
+    path(
+    "loans/records/<int:loan_id>/disburse/",
+    views.loan_disburse,
+    name="loan_disburse"),
+    path(
+    "loans/records/<int:loan_id>/amortization/",
+    views.amortization_list,
+    name="amortization_list"),
+    path(
+    "loans/installments/<int:schedule_id>/payment/",
+    views.loan_payment_create,
+    name="loan_payment_create"),
+    
+    path(
+    "loans/payments/",
+    views.loan_payment_list,
+    name="loan_payment_list"
+    ),
+    path(
+    "transactions/records/",
+    views.transaction_record_list,
+    name="transaction_record_list"),
+    path(
+    "notifications/",
+    views.notification_list,
+    name="notification_list"),
+    path(
+    "borrower/dashboard/",
+    views.borrower_dashboard,
+    name="borrower_dashboard"),
+    path("signup/", views.borrower_signup, name="borrower_signup"),
+    path(
+    "identity-verification/",
+    views.identity_verification_list,
+    name="identity_verification_list"),
+    path(
+    "identity-verification/<int:client_id>/update/",
+    views.identity_verification_update,
+    name="identity_verification_update"),
 ]

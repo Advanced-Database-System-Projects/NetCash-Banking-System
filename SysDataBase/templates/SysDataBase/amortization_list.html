@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amortization Schedule | Banking System</title>
+</head>
+<body>
+
+    <h1>Amortization Schedule</h1>
+    <p>View and manage monthly loan installments.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <h3>Loan Information</h3>
+
+    <p>Loan ID: {{ loan.id }}</p>
+    <p>Borrower: {{ loan.loan_application.client_profile }}</p>
+    <p>Principal Amount: ₱{{ loan.principal_amount }}</p>
+    <p>Outstanding Balance: ₱{{ loan.outstanding_balance }}</p>
+    <p>Interest Rate: {{ loan.annual_interest_rate }}%</p>
+    <p>Loan Term: {{ loan.term_months }} months</p>
+    <p>Status: {{ loan.status }}</p>
+
+    <hr>
+
+    <h3>Monthly Installments</h3>
+
+    <table border="1" cellpadding="10" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Installment No.</th>
+                <th>Due Date</th>
+                <th>Principal Due</th>
+                <th>Interest Due</th>
+                <th>Total Due</th>
+                <th>Amount Paid</th>
+                <th>Status</th>
+                <th>Record Payment</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for schedule in schedules %}
+            <tr>
+                <td>{{ schedule.installment_no }}</td>
+                <td>{{ schedule.due_date|date:"M d, Y" }}</td>
+                <td>₱{{ schedule.principal_due }}</td>
+                <td>₱{{ schedule.interest_due }}</td>
+                <td>₱{{ schedule.total_due }}</td>
+                <td>₱{{ schedule.amount_paid }}</td>
+                <td>{{ schedule.status }}</td>
+
+                <td>
+                    {% if schedule.status != "Paid" and loan.status == "Active" %}
+                        <form method="POST"
+                              action="{% url 'loan_payment_create' schedule.id %}">
+                            {% csrf_token %}
+
+                            <input
+                                type="number"
+                                name="amount"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="Payment amount"
+                                required
+                            >
+
+                            <select name="payment_method" required>
+                                <option value="">Select Method</option>
+                                <option value="Cash">Cash</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Online Payment">Online Payment</option>
+                            </select>
+
+                            <button type="submit">
+                                Record Payment
+                            </button>
+                        </form>
+                    {% else %}
+                        No Payment Action
+                    {% endif %}
+                </td>
+            </tr>
+
+            {% empty %}
+            <tr>
+                <td colspan="8">
+                    No amortization schedules found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <br>
+
+    <a href="{% url 'loan_list' %}">Back to Loan Records</a>
+
+</body>
+</html>
