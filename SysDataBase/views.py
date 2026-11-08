@@ -41,6 +41,8 @@ from .models import Transaction_records
 from .models import Notifications
 from django.db.models import Q
 from django.db.models import Sum
+from .payment_gateway import simulate_payment
+from .forms import BorrowerTransactionRequestForm
 
 def borrower_signup(request):
 
@@ -1290,6 +1292,7 @@ def borrower_dashboard(request):
         "loans": loans,
         "payments": payments,
         "notifications": notifications,
+        "transaction_form": BorrowerTransactionRequestForm()
     }
 
     return render(
@@ -1344,3 +1347,135 @@ def check_savings_ledger(savings_transaction):
     total_credit = totals["total_credit"] or Decimal("0.00")
 
     return total_debit == total_credit
+
+
+@login_required
+@require_POST
+def borrower_transaction_request(request):
+
+    # Only borrowers can use this feature
+    role = request.user.roles.roles_name if request.user.roles else None
+
+    if role != "Borrower":
+        return HttpResponseForbidden("Borrowers only.")
+
+    try:
+        profile = request.user.client_profile
+    except Client_profile.DoesNotExist:
+        return HttpResponseForbidden("Client profile not found.")
+
+    account = get_object_or_404(
+        Savings_account,
+        client_profile=profile
+    )
+
+    if account.status != Savings_account.AccountStatus.ACTIVE:
+        messages.error(
+            request,
+            "Your savings account is not active."
+        )
+        return redirect("borrower_dashboard")
+
+    form = BorrowerTransactionRequestForm(request.POST)
+
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+
+        return redirect("borrower_dashboard")
+
+    transaction_type = form.cleaned_data["transaction_type"]
+    amount = form.cleaned_data["amount"]
+
+    with transaction.atomic():
+
+        # Lock the savings account while processing
+        account = Savings_account.objects.select_for_update().get(
+            id=account.id
+        )
+
+        if account.status != Savings_account.AccountStatus.ACTIVE:
+            messages.error(request, "Your account is not active.")
+            return redirect("borrower_dashboard")
+
+        # Check withdrawal balance before processing
+        if (
+            transaction_type == Savings_transaction.TransactionType.WITHDRAWAL
+            and amount > account.current_balance
+        ):
+            messages.error(
+                request,
+                "Insufficient savings balance."
+            )
+            return redirect("borrower_dashboard")
+
+        # Create a pending transaction
+        savings_transaction = Savings_transaction.objects.create(
+            savings_account=account,
+            transaction_type=transaction_type,
+            reference_number="TXN" + uuid.uuid4().hex[:12].upper(),
+            amount=amount,
+            status=Savings_transaction.TransactionStatus.PENDING
+        )
+
+        # Simulate deposit or withdrawal processing
+        gateway_result = simulate_payment(amount)
+
+        if gateway_result["status"] != "SUCCESS":
+            savings_transaction.status = (
+                Savings_transaction.TransactionStatus.FAILED
+            )
+            savings_transaction.save()
+
+            messages.error(
+                request,
+                "Transaction failed. Your balance was not changed."
+            )
+            return redirect("borrower_dashboard")
+
+        # Update balance only after successful simulated processing
+        if transaction_type == Savings_transaction.TransactionType.DEPOSIT:
+            account.current_balance += amount
+            entry_type = "Savings Deposit"
+            debit_account = "CASH"
+            credit_account = "SAVINGS_LIABILITY"
+
+        else:
+            account.current_balance -= amount
+            entry_type = "Savings Withdrawal"
+            debit_account = "SAVINGS_LIABILITY"
+            credit_account = "CASH"
+
+        account.save()
+
+        # Mark transaction as approved
+        savings_transaction.status = (
+            Savings_transaction.TransactionStatus.APPROVED
+        )
+        savings_transaction.save()
+
+        # Create balanced accounting entries
+        Transaction_records.objects.create(
+            savings_transaction=savings_transaction,
+            debit_amount=amount,
+            credit_amount=Decimal("0.00"),
+            entry_type=entry_type,
+            account_code=debit_account
+        )
+
+        Transaction_records.objects.create(
+            savings_transaction=savings_transaction,
+            debit_amount=Decimal("0.00"),
+            credit_amount=amount,
+            entry_type=entry_type,
+            account_code=credit_account
+        )
+
+    messages.success(
+        request,
+        "Your transaction was successfully processed!"
+    )
+
+    return redirect("borrower_dashboard")
+

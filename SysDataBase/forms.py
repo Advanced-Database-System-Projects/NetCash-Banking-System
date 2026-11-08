@@ -111,3 +111,47 @@ class LoanApprovalForm(forms.Form):
             "min": "0",
         })
     )
+
+
+class BorrowerTransactionRequestForm(forms.ModelForm):
+
+    transaction_type = forms.ChoiceField(
+        choices=[
+            (
+                Savings_transaction.TransactionType.DEPOSIT,
+                "Deposit"
+            ),
+            (
+                Savings_transaction.TransactionType.WITHDRAWAL,
+                "Withdrawal"
+            ),
+        ],
+        widget=forms.Select(
+            attrs={"class": "form-control"}
+        )
+    )
+
+    class Meta:
+        model = Savings_transaction
+        fields = ["transaction_type", "amount"]
+
+        widgets = {
+            "amount": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Enter amount",
+                    "min": "0.01",
+                    "step": "0.01",
+                }
+            ),
+        }
+
+    def clean_amount(self):
+        amount = self.cleaned_data["amount"]
+
+        if amount <= 0:
+            raise forms.ValidationError(
+                "Amount must be greater than zero."
+            )
+
+        return amount

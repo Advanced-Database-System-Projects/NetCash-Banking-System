@@ -193,7 +193,8 @@ class Savings_transaction(BaseModel):
         PENDING = 'Pending', 'Pending'
         APPROVED = 'Approved', 'Approved'
         REJECTED = 'Rejected', 'Rejected'
-
+        FAILED = 'Failed', 'Failed'
+        
     savings_account = models.ForeignKey(
         Savings_account,
         on_delete=models.PROTECT,

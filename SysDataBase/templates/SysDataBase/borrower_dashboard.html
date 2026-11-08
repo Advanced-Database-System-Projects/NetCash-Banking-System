@@ -53,6 +53,7 @@
 
 {% block content %}
 
+
 <!-- DASHBOARD HEADER -->
 <div class="dashboard-header">
     <h2 class="mb-1">Welcome, {{ client.first_name }}!</h2>
@@ -266,6 +267,33 @@
 
     </div>
 </section>
+
+<!-- Borrower Transaction Request -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Make a Savings Transaction</h5>
+    </div>
+    <div class="card-body">
+        {% for account in savings_accounts %}
+            {% if account.status == "Active" %}
+                <form method="post" action="{% url 'borrower_transaction_request' %}">
+                    {% csrf_token %}
+                    {{ transaction_form.as_p }}
+                    
+                    <button type="submit" class="btn btn-primary">
+                        Submit Transaction
+                    </button>
+                </form>
+            {% else %}
+                <p class="text-muted">
+                    Your savings account is not active. You cannot make transactions at this time.
+                </p>
+            {% endif %}
+        {% empty %}
+            <p>No savings account found.</p>
+        {% endfor %}
+    </div>
+</div>
 
 <!-- TRANSACTION HISTORY -->
 <section class="dashboard-section" id="transactions">

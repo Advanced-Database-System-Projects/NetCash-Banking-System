@@ -86,4 +86,8 @@ urlpatterns = [
     "identity-verification/<int:client_id>/update/",
     views.identity_verification_update,
     name="identity_verification_update"),
+    path(
+    "borrower/transactions/request/",
+    views.borrower_transaction_request,
+    name="borrower_transaction_request"),
 ]
