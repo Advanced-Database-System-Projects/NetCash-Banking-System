@@ -143,6 +143,57 @@
         {% endif %}
     </div>
 
+    {% if eligibility %}
+        <div class="decision">
+            <h3>Loan Eligibility Assessment</h3>
+
+            <p>
+                <strong>Eligibility:</strong>
+                {% if eligibility.eligible %}
+                    <span style="color: green;">Eligible</span>
+                {% else %}
+                    <span style="color: red;">Not Eligible</span>
+                {% endif %}
+            </p>
+
+            <p>
+                <strong>Risk Category:</strong>
+                {{ eligibility.risk_category }}
+            </strong>
+            </p>
+
+            <p>
+                <strong>Recommend Annual Interest Rate:</strong>
+                {% if eligibility.recommend_interest_rate %}
+                    {{ eligibility.recommend_interest_rate }}%
+                {% else %}
+                    Manual Review Required
+                {% endif %}
+            </p>
+
+            {% for check in eligibility.checks %}
+                <div class="detail">
+                    <strong>
+                        {% if check.passed %}
+                            <span syle="color: green;">✓</span>
+                        {% else %}
+                            <span style="color: red;">✗</span>
+                        {% endif %}
+                        {{ check.name }}
+                    </strong>
+                    <p>{{ check.details }}</p>
+                </div>
+            {% endfor %}
+
+            <p><Strong>Estimated Monthly Payment:</Strong>
+                ₱{{ eligibility.monthly_payment|floatformat:2 }}</p>
+
+            </p><strong>Debt-to-Income Ratio:</strong>
+                {{ eligibility.debt_ratio|floatformat:2 }}%</p>
+
+        </div> 
+    {% endif %}
+
     {% if application.status == "Pending" and user.is_staff %}
 
         <div class="decision">

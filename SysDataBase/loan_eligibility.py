@@ -20,6 +20,50 @@ RISK_INTEREST_RATES = {
     "High": Decimal("9.00"),
 }
 
+def classify_loan_risk(
+    income_passed,
+    savings_passed,
+    credit_score,
+    debt_ratio
+):
+    """
+    Classify borrower risk using the project's sample criteria.
+    """
+
+    # Insufficient information for a reliable risk assessment
+    if credit_score is None:
+        return "Manual Review"
+
+    score = 0
+
+    # Income assessment
+    if income_passed:
+        score += 1
+
+    # Savings assessment
+    if savings_passed:
+        score += 1
+
+    # Credit history assessment
+    if credit_score >= 700:
+        score += 2
+    elif credit_score >= MIN_CREDIT_SCORE:
+        score += 1
+
+    # Repayment capacity assessment
+    if debt_ratio <= Decimal("0.20"):
+        score += 2
+    elif debt_ratio <= MAX_DEBT_RATIO:
+        score += 1
+
+    if score >= 5:
+        return "Low"
+    elif score >= 3:
+        return "Medium"
+    else:
+        return "High"
+
+
 
 def calculate_monthly_payment(principal, annual_rate, term_months):
     """Estimate the monthly installment using fixed monthly payments."""
@@ -216,7 +260,19 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
         )
     )
 
+    
     eligible = all(check["passed"] for check in checks)
+
+    risk_category = classify_loan_risk(
+        income_passed=income_passed,
+        savings_passed=savings_passed,
+        credit_score=application.credit_score,
+        debt_ratio=debt_ratio
+    )
+
+    recommended_interest_rate = RISK_INTEREST_RATES.get(
+        risk_category
+    )
 
     return {
         "eligible": eligible,
@@ -226,4 +282,7 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
         "existing_obligations": existing_obligations,
         "total_monthly_obligations": total_monthly_obligations,
         "debt_ratio": debt_ratio * 100,
+        "risk_category": risk_category,
+        "recommended_interest_rate": recommended_interest_rate,
     }
+

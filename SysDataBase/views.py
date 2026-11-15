@@ -397,18 +397,26 @@ def loan_application_detail(request, application_id):
         ),
         id=application_id
     )
-    print("USERNAME:", request.user.username)
-    print("IS STAFF:", request.user.is_staff)
-    print("ROLE:", request.user.roles.roles_name if request.user.roles else "NO ROLE")
-    print("APPLICATION STATUS:", application.status)
+
+    eligibility = None
+
+    if application.status == "Pending":
+        from .loan_eligibility import evaluate_loan_eligibility
+
+        eligibility = evaluate_loan_eligibility(
+            application,
+            Decimal("5.00")
+        )
 
     return render(
         request,
         "SysDataBase/loan_application_detail.html",
         {
-            "application": application
+            "application": application,
+            "eligibility": eligibility,
         }
     )
+
 
 @login_required
 @require_POST
