@@ -3,7 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP, localcontext
 
 from django.utils import timezone
 
-from .models import Loans, Savings_account
+from .models import Loan_application, Loans, Savings_account
 
 
 MIN_MONTHLY_INCOME = Decimal("10000.00")
@@ -127,8 +127,9 @@ def get_existing_monthly_obligations(client):
     return total_obligations.quantize(Decimal("0.01"))
 
 
-def evaluate_loan_eligibility(application, annual_interest_rate):
-    """Evaluate a loan application using the project's sample criteria."""
+
+def evaluate_loan_eligibility(application):
+    """Evaluate eligibility and recommend an interest rate using sample criteria."""
 
     client = application.client_profile
     reasons = []
@@ -191,15 +192,10 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
         savings_passed = False
         savings_details = "Borrower has no savings account."
 
-    add_check(
-        "Savings Account",
-        savings_passed,
-        savings_details
-    )
+    add_check("Savings Account", savings_passed, savings_details)
 
     # 4. Loan term
     term = application.requested_term_months
-
     term_passed = MIN_LOAN_TERM <= term <= MAX_LOAN_TERM
 
     add_check(
@@ -209,10 +205,12 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
         f"Allowed term: {MIN_LOAN_TERM} to {MAX_LOAN_TERM} months."
     )
 
-    # 5. Credit score
+    # 5. Credit history
     if application.credit_score is None:
         credit_passed = True
-        credit_details = "Not Yet Rated. No credit history; no score penalty."
+        credit_details = (
+            "Not Yet Rated. No credit history; no score penalty."
+        )
     else:
         credit_passed = application.credit_score >= MIN_CREDIT_SCORE
         credit_details = (
@@ -220,59 +218,86 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
             f"Minimum sample score: {MIN_CREDIT_SCORE}."
         )
 
-    add_check(
-        "Credit History",
-        credit_passed,
-        credit_details
-    )
+    add_check("Credit History", credit_passed, credit_details)
 
-    # 6. Repayment capacity
-    monthly_income = income
-
+    # 6. Existing obligations before the proposed loan
     existing_obligations = get_existing_monthly_obligations(client)
 
-    proposed_payment = calculate_monthly_payment(
-        application.amount_requested,
-        annual_interest_rate,
-        term
-    )
-
-    total_monthly_obligations = (
-        existing_obligations + proposed_payment
-    )
-
-    if monthly_income > 0:
-        debt_ratio = total_monthly_obligations / monthly_income
+    if income > 0:
+        existing_debt_ratio = existing_obligations / income
     else:
-        debt_ratio = Decimal("1.00")
+        existing_debt_ratio = Decimal("1.00")
 
-    debt_passed = debt_ratio <= MAX_DEBT_RATIO
 
-    add_check(
-        "Repayment Capacity",
-        debt_passed,
-        (
+    # 7. Risk classification and recommended interest rate
+    if application.credit_score is None:
+        if (
+            application.risk_review_status
+            == Loan_application.RiskReviewStatus.COMPLETED
+            and application.risk_category
+            and application.manually_recommended_rate is not None
+        ):
+            risk_category = application.risk_category
+            recommended_interest_rate = (
+                application.manually_recommended_rate
+            )
+        else:
+            risk_category = "Manual Review"
+            recommended_interest_rate = None
+    else:
+        risk_category = classify_loan_risk(
+            income_passed=income_passed,
+            savings_passed=savings_passed,
+            credit_score=application.credit_score,
+            debt_ratio=existing_debt_ratio
+        )
+
+        recommended_interest_rate = RISK_INTEREST_RATES.get(
+            risk_category
+        )
+
+    # 8. Repayment capacity using the recommended rate
+    if recommended_interest_rate is not None and term > 0:
+        proposed_payment = calculate_monthly_payment(
+            application.amount_requested,
+            recommended_interest_rate,
+            term
+        )
+
+        total_monthly_obligations = (
+            existing_obligations + proposed_payment
+        )
+
+        if income > 0:
+            debt_ratio = total_monthly_obligations / income
+        else:
+            debt_ratio = Decimal("1.00")
+
+        debt_passed = debt_ratio <= MAX_DEBT_RATIO
+
+        debt_details = (
+            f"Recommended rate: {recommended_interest_rate}%. "
             f"Estimated new monthly payment: PHP {proposed_payment:,.2f}. "
-            f"Existing monthly obligations: PHP {existing_obligations:,.2f}. "
+            f"Existing obligations: PHP {existing_obligations:,.2f}. "
             f"Total: PHP {total_monthly_obligations:,.2f}. "
             f"Debt-to-income ratio: {debt_ratio * 100:.2f}%. "
             f"Maximum allowed: {MAX_DEBT_RATIO * 100:.0f}%."
         )
-    )
 
-    
+    else:
+        proposed_payment = None
+        total_monthly_obligations = existing_obligations
+        debt_ratio = existing_debt_ratio
+        debt_passed = False
+
+        debt_details = (
+            "Manual review required before an interest rate and "
+            "monthly payment can be determined."
+        )
+
+    add_check("Repayment Capacity", debt_passed, debt_details)
+
     eligible = all(check["passed"] for check in checks)
-
-    risk_category = classify_loan_risk(
-        income_passed=income_passed,
-        savings_passed=savings_passed,
-        credit_score=application.credit_score,
-        debt_ratio=debt_ratio
-    )
-
-    recommended_interest_rate = RISK_INTEREST_RATES.get(
-        risk_category
-    )
 
     return {
         "eligible": eligible,
@@ -285,4 +310,3 @@ def evaluate_loan_eligibility(application, annual_interest_rate):
         "risk_category": risk_category,
         "recommended_interest_rate": recommended_interest_rate,
     }
-

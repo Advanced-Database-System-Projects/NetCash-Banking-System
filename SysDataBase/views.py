@@ -43,6 +43,7 @@ from django.db.models import Q
 from django.db.models import Sum
 from .payment_gateway import simulate_payment
 from .forms import BorrowerTransactionRequestForm
+from .models import LoanApplicationHistory
 
 def borrower_signup(request):
 
@@ -349,6 +350,7 @@ def loan_application_list(request):
         }
     )
 
+
 @login_required
 def loan_application_create(request):
 
@@ -370,6 +372,16 @@ def loan_application_create(request):
             application.client_profile = client
             application.save()
 
+            # Record application submission
+            record_loan_application_history(
+                application=application,
+                action=LoanApplicationHistory.ActionType.SUBMITTED,
+                performed_by=request.user,
+                previous_status="",
+                new_status=application.status,
+                details="Borrower submitted a new loan application."
+            )
+
             messages.success(
                 request,
                 "Your loan application was submitted successfully."
@@ -385,6 +397,7 @@ def loan_application_create(request):
         "SysDataBase/loan_application_form.html",
         {"form": form}
     )
+
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
@@ -403,10 +416,7 @@ def loan_application_detail(request, application_id):
     if application.status == "Pending":
         from .loan_eligibility import evaluate_loan_eligibility
 
-        eligibility = evaluate_loan_eligibility(
-            application,
-            Decimal("5.00")
-        )
+        eligibility = evaluate_loan_eligibility(application)
 
     return render(
         request,
@@ -416,6 +426,96 @@ def loan_application_detail(request, application_id):
             "eligibility": eligibility,
         }
     )
+
+
+@login_required
+@require_POST
+def loan_application_manual_review(request, application_id):
+
+    # Only Admin and Loan Officer can perform manual reviews
+    if (
+        not request.user.roles
+        or request.user.roles.roles_name not in ["Admin", "Loan Officer"]
+    ):
+        return HttpResponseForbidden(
+            "You are not authorized to perform loan risk reviews."
+        )
+
+    application = get_object_or_404(
+        Loan_application,
+        id=application_id
+    )
+
+    # Only pending applications without credit history need this review
+    if application.status != "Pending" or application.credit_score is not None:
+        messages.error(request, "This application is not eligible for manual risk review.")
+        return redirect("loan_application_detail", application_id=application.id)
+
+    risk_category = request.POST.get("risk_category", "").strip()
+    rate_input = request.POST.get("interest_rate", "").strip()
+    review_notes = request.POST.get("review_notes", "").strip()
+
+    valid_categories = [
+        choice[0] for choice in Loan_application.RiskCategory.choices
+    ]
+
+    if risk_category not in valid_categories:
+        messages.error(request, "Please select a valid risk category.")
+        return redirect("loan_application_detail", application_id=application.id)
+
+    if not review_notes:
+        messages.error(request, "Please provide notes explaining the risk decision.")
+        return redirect("loan_application_detail", application_id=application.id)
+
+    from decimal import Decimal, InvalidOperation
+
+    try:
+        interest_rate = Decimal(rate_input)
+
+        if not interest_rate.is_finite() or not (
+            Decimal("0") < interest_rate <= Decimal("100")
+        ):
+            raise ValueError
+
+    except (InvalidOperation, ValueError):
+        messages.error(
+            request,
+            "Enter a valid annual interest rate greater than 0% and not above 100%."
+        )
+        return redirect("loan_application_detail", application_id=application.id)
+
+    # Save the manual review and its history together
+    with transaction.atomic():
+
+        application.risk_review_status = (
+            Loan_application.RiskReviewStatus.COMPLETED
+        )
+        application.risk_category = risk_category
+        application.manually_recommended_rate = interest_rate
+        application.risk_review_notes = review_notes
+        application.risk_reviewed_by = request.user
+        application.risk_reviewed_at = timezone.now()
+        application.save()
+
+        record_loan_application_history(
+            application=application,
+            action=LoanApplicationHistory.ActionType.RISK_REVIEWED,
+            performed_by=request.user,
+            previous_status="Pending Manual Review",
+            new_status="Risk Review Completed",
+            details=(
+                f"Risk category: {risk_category}. "
+                f"Recommended annual rate: {interest_rate}%. "
+                f"Notes: {review_notes}"
+            )
+        )
+
+    messages.success(
+        request,
+        "Manual risk review completed successfully."
+    )
+
+    return redirect("loan_application_detail", application_id=application.id)
 
 
 @login_required
@@ -434,19 +534,24 @@ def loan_application_approve(request, application_id):
         messages.error(request, "This application has already been reviewed.")
         return redirect("loan_application_detail", application_id=application.id)
 
-    try:
-        interest_rate = Decimal(request.POST.get("annual_interest_rate", ""))
-    except (InvalidOperation, TypeError, ValueError):
-        messages.error(request, "Please enter a valid interest rate.")
+    from .loan_eligibility import evaluate_loan_eligibility
+
+    eligibility = evaluate_loan_eligibility(application)
+
+    if not eligibility["eligible"]:
+        messages.error(
+            request,
+            "This application does not meet the eligibility requirements."
+        )
         return redirect("loan_application_detail", application_id=application.id)
 
-    if (
-        not interest_rate.is_finite()
-        or interest_rate < 0
-        or interest_rate > Decimal("999.99")
-        or interest_rate.as_tuple().exponent < -2
-    ):
-        messages.error(request, "Please enter a valid interest rate (0 to 999.99, up to 2 decimal places).")
+    interest_rate = eligibility["recommended_interest_rate"]
+
+    if interest_rate is None:
+        messages.error(
+            request,
+            "Manual risk review is required before this loan can be approved."
+        )
         return redirect("loan_application_detail", application_id=application.id)
 
     if Loans.objects.filter(loan_application=application).exists():
@@ -468,7 +573,7 @@ def loan_application_approve(request, application_id):
             status="Approved"
         )
 
-        # Automatically generate the loan agreement PDF
+        # Preserve automatic loan agreement PDF generation
         generate_loan_agreement(application, loan)
 
         application.status = "Approved"
@@ -478,7 +583,7 @@ def loan_application_approve(request, application_id):
 
     messages.success(
         request,
-        "Loan application approved, loan record created, and agreement PDF generated successfully."
+        f"Loan approved with a recommended annual interest rate of {interest_rate}%."
     )
 
     return redirect("loan_application_detail", application_id=application.id)
@@ -504,21 +609,36 @@ def loan_application_reject(request, application_id):
     application.reviewed_at = timezone.now()
     application.save()
 
-    messages.success(request, "Loan application rejected.")
+    messages.success(request, "Loan application rejected successfully.")
 
     return redirect("loan_application_detail", application_id=application.id)
 
 @login_required
 @user_passes_test(lambda user: user.is_staff)
 def savings_account_list(request):
+
     accounts = Savings_account.objects.select_related(
-        "client_profile"
+        "client_profile",
+        "client_profile__users"
     ).order_by("-opened_at")
+
+    search_query = request.GET.get("search", "").strip()
+
+    if search_query:
+        accounts = accounts.filter(
+            Q(account_no__icontains=search_query) |
+            Q(client_profile__first_name__icontains=search_query) |
+            Q(client_profile__last_name__icontains=search_query) |
+            Q(client_profile__users__username__icontains=search_query)
+        )
 
     return render(
         request,
         "SysDataBase/savings_account_list.html",
-        {"accounts": accounts}
+        {
+            "accounts": accounts,
+            "search_query": search_query,
+        }
     )
 
 @login_required
@@ -1486,4 +1606,22 @@ def borrower_transaction_request(request):
     )
 
     return redirect("borrower_dashboard")
+
+def record_loan_application_history(
+    application,
+    action,
+    performed_by=None,
+    previous_status="",
+    new_status="",
+    details=""
+):
+    LoanApplicationHistory.objects.create(
+        application=application,
+        performed_by=performed_by,
+        action=action,
+        previous_status=previous_status,
+        new_status=new_status,
+        details=details
+    )
+
 

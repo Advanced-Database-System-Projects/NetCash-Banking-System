@@ -90,4 +90,12 @@ urlpatterns = [
     "borrower/transactions/request/",
     views.borrower_transaction_request,
     name="borrower_transaction_request"),
+    path(
+    'loans/applications/<int:application_id>/reject/',
+    views.loan_application_reject,
+    name='loan_application_reject'),
+    path(
+    "loans/applications/<int:application_id>/manual-review/",
+    views.loan_application_manual_review,
+    name="loan_application_manual_review"),
 ]

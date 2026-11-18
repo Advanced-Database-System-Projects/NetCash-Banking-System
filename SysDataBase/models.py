@@ -273,7 +273,49 @@ class Loan_application(BaseModel):
     eligibility_status = models.CharField(
         max_length=30, blank=True
     )
+    
+    class RiskReviewStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        COMPLETED = "Completed", 'Completed'
 
+    class RiskCategory(models.TextChoices):
+        LOW = 'Low', 'Low'
+        MEDIUM = 'Medium', 'Medium'
+        HIGH = 'High', 'High'
+
+    risk_review_status = models.CharField(
+        max_length=20,
+        choices=RiskReviewStatus.choices,
+        default=RiskReviewStatus.PENDING
+    )
+
+    risk_category = models.CharField(
+        max_length=20,
+        choices=RiskCategory.choices,
+        null=True,
+        blank=True
+    )
+
+    manually_recommended_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    risk_review_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True,
+        related_name='risk_reviewed_applications'
+    )
+
+    risk_reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+    
     application_date = models.DateTimeField(auto_now_add=True)
 
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -568,3 +610,54 @@ class Notifications(BaseModel):
 
     def __str__(self):
         return f"{self.channel} - {self.status}"
+
+class LoanApplicationHistory(models.Model):
+
+
+    class ActionType(models.TextChoices):
+        SUBMITTED = 'Submitted', 'Submitted'
+        UPDATED = 'Updated', 'Updated'
+        RISK_REVIEWED = 'Risk Reviewed', 'Risk Reviewed'
+        APPROVED = 'Approved', 'Approved'
+        REJECTED = 'Rejected', 'Rejected'
+
+    application = models.ForeignKey(
+        Loan_application,
+        on_delete=models.CASCADE,
+        related_name='history'
+    )
+
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='loan_application_history'
+    )
+
+    action = models.CharField(
+        max_length=30,
+        choices=ActionType.choices
+    )
+
+    previous_status = models.CharField(
+        max_length=20,
+        blank=True
+    )
+
+    new_status = models.CharField(
+        max_length=20,
+        blank=True
+    )
+
+    details = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Loan Application History"
+        verbose_name_plural = "Loan Application Histories"
+
+    def __str__(self):
+        return f"{self.application} - {self.action}"

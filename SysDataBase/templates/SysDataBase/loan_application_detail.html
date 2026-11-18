@@ -20,7 +20,7 @@
             border-radius: 10px;
         }
 
-        h1, h3 {
+        h1, h3, h4 {
             color: #17365d;
         }
 
@@ -40,12 +40,6 @@
             border-radius: 8px;
         }
 
-        input {
-            padding: 10px;
-            margin: 10px 0;
-            width: 220px;
-        }
-
         button {
             padding: 10px 15px;
             cursor: pointer;
@@ -62,6 +56,55 @@
         .reject {
             background: #dc3545;
             color: white;
+        }
+
+        .review {
+            background: #17365d;
+            color: white;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+
+        .danger {
+            color: red;
+            font-weight: bold;
+        }
+
+        .warning {
+            color: #b7791f;
+            font-weight: bold;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 6px;
+            background: #e8f1fa;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        textarea {
+            resize: vertical;
         }
 
         a {
@@ -102,7 +145,7 @@
 
     <div class="detail">
         <span class="label">Requested Amount:</span>
-        ₱{{ application.amount_requested }}
+        ₱{{ application.amount_requested|floatformat:2 }}
     </div>
 
     <div class="detail">
@@ -150,24 +193,23 @@
             <p>
                 <strong>Eligibility:</strong>
                 {% if eligibility.eligible %}
-                    <span style="color: green;">Eligible</span>
+                    <span class="success">Eligible</span>
                 {% else %}
-                    <span style="color: red;">Not Eligible</span>
+                    <span class="danger">Not Eligible</span>
                 {% endif %}
             </p>
 
             <p>
                 <strong>Risk Category:</strong>
                 {{ eligibility.risk_category }}
-            </strong>
             </p>
 
             <p>
-                <strong>Recommend Annual Interest Rate:</strong>
-                {% if eligibility.recommend_interest_rate %}
-                    {{ eligibility.recommend_interest_rate }}%
+                <strong>Recommended Annual Interest Rate:</strong>
+                {% if eligibility.recommended_interest_rate != None %}
+                    {{ eligibility.recommended_interest_rate }}%
                 {% else %}
-                    Manual Review Required
+                    <span class="warning">Manual Review Required</span>
                 {% endif %}
             </p>
 
@@ -175,9 +217,9 @@
                 <div class="detail">
                     <strong>
                         {% if check.passed %}
-                            <span syle="color: green;">✓</span>
+                            <span class="success">✓</span>
                         {% else %}
-                            <span style="color: red;">✗</span>
+                            <span class="danger">✗</span>
                         {% endif %}
                         {{ check.name }}
                     </strong>
@@ -185,63 +227,184 @@
                 </div>
             {% endfor %}
 
-            <p><Strong>Estimated Monthly Payment:</Strong>
-                ₱{{ eligibility.monthly_payment|floatformat:2 }}</p>
+            <p>
+                <strong>Estimated Monthly Payment:</strong>
+                {% if eligibility.monthly_payment != None %}
+                    ₱{{ eligibility.monthly_payment|floatformat:2 }}
+                {% else %}
+                    Manual calculation required
+                {% endif %}
+            </p>
 
-            </p><strong>Debt-to-Income Ratio:</strong>
-                {{ eligibility.debt_ratio|floatformat:2 }}%</p>
-
-        </div> 
+            <p>
+                <strong>Debt-to-Income Ratio:</strong>
+                {{ eligibility.debt_ratio|floatformat:2 }}%
+            </p>
+        </div>
     {% endif %}
+
+
+    <!-- MANUAL RISK REVIEW -->
+
+    {% if application.status == "Pending" and eligibility.risk_category == "Manual Review" %}
+
+        {% if user.is_staff %}
+            {% if user.roles.roles_name == "Admin" or user.roles.roles_name == "Loan Officer" %}
+
+                <div class="decision">
+                    <h3>Manual Risk Review</h3>
+
+                    <p class="warning">
+                        This borrower has no available credit history.
+                        An authorized officer must complete a manual risk assessment.
+                    </p>
+
+                    <form method="POST"
+                          action="{% url 'loan_application_manual_review' application.id %}">
+
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            <label for="risk_category">Risk Category</label>
+
+                            <select name="risk_category"
+                                    id="risk_category"
+                                    required>
+                                <option value="">Select risk category</option>
+                                <option value="Low">Low Risk</option>
+                                <option value="Medium">Medium Risk</option>
+                                <option value="High">High Risk</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="interest_rate">
+                                Recommended Annual Interest Rate (%)
+                            </label>
+
+                            <input
+                                type="number"
+                                name="interest_rate"
+                                id="interest_rate"
+                                min="0.01"
+                                max="100"
+                                step="0.01"
+                                placeholder="Example: 7.00"
+                                required
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label for="review_notes">Review Notes</label>
+
+                            <textarea
+                                name="review_notes"
+                                id="review_notes"
+                                rows="4"
+                                placeholder="Explain the reason for your risk classification..."
+                                required
+                            ></textarea>
+                        </div>
+
+                        <button type="submit" class="review">
+                            Complete Risk Review
+                        </button>
+
+                    </form>
+                </div>
+
+            {% endif %}
+        {% endif %}
+
+    {% endif %}
+
+
+    <!-- COMPLETED MANUAL REVIEW -->
+
+    {% if application.risk_review_status == "Completed" %}
+
+        <div class="alert">
+            <h3>Manual Risk Review Completed</h3>
+
+            <p>
+                <strong>Risk Category:</strong>
+                {{ application.risk_category }}
+            </p>
+
+            <p>
+                <strong>Recommended Annual Interest Rate:</strong>
+                {{ application.manually_recommended_rate }}%
+            </p>
+
+            <p>
+                <strong>Reviewed By:</strong>
+                {{ application.risk_reviewed_by.username }}
+            </p>
+
+            <p>
+                <strong>Review Notes:</strong>
+                {{ application.risk_review_notes }}
+            </p>
+
+            <p>
+                <strong>Review Date:</strong>
+                {{ application.risk_reviewed_at|date:"F d, Y - h:i A" }}
+            </p>
+        </div>
+
+    {% endif %}
+
+
+    <!-- APPLICATION DECISION -->
 
     {% if application.status == "Pending" and user.is_staff %}
 
-        <div class="decision">
+        {% if user.roles.roles_name == "Admin" or user.roles.roles_name == "Loan Officer" %}
 
-            <h3>Application Decision</h3>
+            <div class="decision">
+                <h3>Application Decision</h3>
 
-            <form method="POST"
-                  action="{% url 'loan_application_approve' application.id %}">
-                {% csrf_token %}
+                {% if eligibility.eligible and eligibility.recommended_interest_rate != None %}
 
-                <label for="annual_interest_rate">
-                    Annual Interest Rate (%):
-                </label>
+                    <p>
+                        <strong>Approval Rate:</strong>
+                        {{ eligibility.recommended_interest_rate }}% annually
+                    </p>
 
-                <br>
+                    <form method="POST"
+                          action="{% url 'loan_application_approve' application.id %}">
+                        {% csrf_token %}
 
-                <input
-                    type="number"
-                    id="annual_interest_rate"
-                    name="annual_interest_rate"
-                    min="0"
-                    max="999.99"
-                    step="0.01"
-                    placeholder="Example: 5.00"
-                    required
-                >
+                        <button type="submit"
+                                class="approve"
+                                onclick="return confirm('Approve this loan application using the recommended interest rate?');">
+                            Approve Application
+                        </button>
+                    </form>
 
-                <br>
+                {% else %}
 
-                <button type="submit"
-                        class="approve"
-                        onclick="return confirm('Approve this loan application?');">
-                    Approve Application
-                </button>
-            </form>
+                    <p class="danger">
+                        Approval is unavailable. Resolve eligibility requirements
+                        or complete manual risk review first.
+                    </p>
 
-            <form method="POST"
-                  action="{% url 'loan_application_reject' application.id %}">
-                {% csrf_token %}
+                {% endif %}
 
-                <button type="submit"
-                        class="reject"
-                        onclick="return confirm('Reject this loan application?');">
-                    Reject Application
-                </button>
-            </form>
+                <form method="POST"
+                      action="{% url 'loan_application_reject' application.id %}">
+                    {% csrf_token %}
 
-        </div>
+                    <button type="submit"
+                            class="reject"
+                            onclick="return confirm('Reject this loan application?');">
+                        Reject Application
+                    </button>
+                </form>
+
+            </div>
+
+        {% endif %}
 
     {% endif %}
 
