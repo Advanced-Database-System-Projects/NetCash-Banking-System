@@ -1,0 +1,16 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+
+# Local database
+db.sqlite3
+
+# User uploaded files and generated documents
+media/
+loan_agreements/
+
+# Environment variables
+.env

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Savings Transaction</title>
+</head>
+<body>
+
+    <h1>Deposit or Withdraw</h1>
+
+    <p>Account Number: {{ account.account_no }}</p>
+    <p>Client: {{ account.client_profile }}</p>
+    <p>Current Balance: {{ account.current_balance }}</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit">Submit Transaction</button>
+    </form>
+
+    <br>
+
+    <a href="{% url 'savings_account_list' %}">Back to Savings Accounts</a>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Records | Banking System</title>
+</head>
+<body>
+
+    <h1>Loan Records</h1>
+    <p>Manage and monitor approved client loans.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    <table border="1" cellpadding="10" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Loan ID</th>
+                <th>Client</th>
+                <th>Principal Amount</th>
+                <th>Outstanding Balance</th>
+                <th>Term (Months)</th>
+                <th>Interest Rate</th>
+                <th>Status</th>
+                <th>Disbursement Date</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for loan in loans %}
+            <tr>
+                <td>{{ loan.id }}</td>
+                <td>{{ loan.loan_application.client_profile }}</td>
+                <td>{{ loan.principal_amount }}</td>
+                <td>{{ loan.outstanding_balance }}</td>
+                <td>{{ loan.term_months }}</td>
+                <td>{{ loan.annual_interest_rate }}%</td>
+                <td>{{ loan.status }}</td>
+                <td>
+                    {{ loan.disbursement_date|date:"M d, Y"|default:"Not yet disbursed" }}
+                </td>
+                <td>
+                    {% if loan.status == "Approved" %}
+                        <form method="POST"
+                              action="{% url 'loan_disburse' loan.id %}">
+                            {% csrf_token %}
+
+                            <label>Disbursement Date:</label>
+                            <input type="date"
+                                   name="disbursement_date"
+                                   required>
+
+                            <button type="submit">
+                                Disburse Loan
+                            </button>
+                        </form>
+                    {% elif loan.status == "Active" %}
+                        Already Disbursed
+                        <br>
+                        <a href="{% url 'amortization_list' loan.id %}">
+                            View Amortization Schedule
+                        </a>
+                    {% else %}
+                        No Action Available
+                    {% endif %}
+                </td>
+            </tr>
+                </td>
+            </tr>
+
+            {% empty %}
+            <tr>
+                <td colspan="9">No loan records found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>

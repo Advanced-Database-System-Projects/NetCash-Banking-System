@@ -1,0 +1,163 @@
+{% extends 'SysDataBase/base.html' %}
+
+{% block title %}Notifications | Banking System{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <h2>Notifications Management</h2>
+    <p class="text-muted mb-4">
+        Create and monitor client notifications.
+    </p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Create Notification</h5>
+        </div>
+
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Search Recipient</label>
+                    <input
+                        type="text"
+                        id="user_search"
+                        class="form-control"
+                        placeholder="Search by username or email..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Recipient</label>
+                    <select
+                        name="user_id"
+                        id="user_id"
+                        class="form-select"
+                        required
+                    >
+                        <option value="">Select User</option>
+
+                        {% for user in users %}
+                        <option
+                            value="{{ user.id }}"
+                            data-search="{{ user.username|lower }} {{ user.email|lower }}"
+                        >
+                            {{ user.username }} ({{ user.email }})
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <small class="text-muted">
+                        Search for an account, then select the recipient.
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Channel</label>
+                    <select name="channel" class="form-select" required>
+                        <option value="">Select Channel</option>
+                        <option value="Email">Email</option>
+                        <option value="SMS">SMS</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Message</label>
+                    <textarea
+                        name="message"
+                        class="form-control"
+                        rows="3"
+                        required
+                    ></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Create Notification
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Notification Records</h5>
+        </div>
+
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th>Recipient</th>
+                            <th>Channel</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Sent Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for notification in notifications %}
+                        <tr>
+                            <td>{{ notification.users.username }}</td>
+                            <td>{{ notification.channel }}</td>
+                            <td>{{ notification.message }}</td>
+                            <td>
+                                {% if notification.status == "Sent" %}
+                                    <span class="badge bg-success">Sent</span>
+                                {% elif notification.status == "Pending" %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if notification.sent_at %}
+                                    {{ notification.sent_at|date:"M d, Y H:i" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">
+                                No notifications found.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const searchInput = document.getElementById("user_search");
+    const userSelect = document.getElementById("user_id");
+
+    searchInput.addEventListener("input", function () {
+        const searchValue = this.value.toLowerCase().trim();
+
+        Array.from(userSelect.options).forEach(function (option, index) {
+            if (index === 0) return;
+
+            const searchText = option.getAttribute("data-search") || "";
+
+            option.hidden = !searchText.includes(searchValue);
+        });
+
+        userSelect.value = "";
+    });
+</script>
+
+{% endblock %}

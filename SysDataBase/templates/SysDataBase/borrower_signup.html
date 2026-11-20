@@ -1,0 +1,27 @@
+{% extends 'SysDataBase/base.html' %}
+
+{% block title %}Borrower Registration | Banking System{% endblock %}
+
+{% block content %}
+
+<h1>Borrower Registration</h1>
+<p>Create your borrower account.</p>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <h3>Account Information</h3>
+    {{ user_form.as_p }}
+
+    <h3>Personal Information</h3>
+    {{ profile_form.as_p }}
+
+    <button type="submit">Create Account</button>
+</form>
+
+<p>
+    Already have an account?
+    <a href="{% url 'user_login' %}">Log in here</a>
+</p>
+
+{% endblock %}
