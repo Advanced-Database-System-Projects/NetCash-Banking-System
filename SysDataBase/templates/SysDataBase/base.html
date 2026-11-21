@@ -1,5 +1,9 @@
 
 {% load static %}
+<link rel="manifest"
+      href="{% static 'SysDataBase/manifest.json' %}">
+
+<meta name="theme-color" content="#15803d">
 
 <!DOCTYPE html>
 <html lang="en" class="layout-menu-fixed" data-bs-theme="light">
@@ -341,6 +345,25 @@
 <script src="{% static 'js/main.js' %}"></script>
 
 {% block extra_js %}{% endblock %}
+
+
+<script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+            navigator.serviceWorker
+                .register("/service-worker.js")
+                .then(function () {
+                    console.log("BankingSys PWA registered");
+                })
+                .catch(function (error) {
+                    console.error(
+                        "PWA registration failed:",
+                        error
+                    );
+                });
+        });
+    }
+</script>
 
 </body>
 </html>

@@ -18,10 +18,18 @@ from django.contrib import admin
 from django.urls import path, include
 from SysDataBase import views
 from django.contrib.auth import views as auth_views
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('SysDataBase.urls')),
     path("login/", views.user_login, name="user_login"),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path("offline/",
+    TemplateView.as_view(template_name="offline.html"),
+    name="offline"),
+    path("service-worker.js",
+    TemplateView.as_view(template_name="service-worker.js",content_type="application/javascript"),
+    name="service_worker"),
+
 ]
