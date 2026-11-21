@@ -1,28 +1,100 @@
-    <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Banking System Login</title>
-</head>
-<body>
-    <h1>Banking System Login</h1>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% extends "SysDataBase/base.html" %}
 
-    <form method="POST">
-        {% csrf_token %}
+{% block title %}Login | Banking System{% endblock %}
 
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
+{% block content %}
 
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
+<!-- LOGIN PAGE -->
+<div class="row justify-content-center align-items-center py-5">
 
-        <button type="submit">Login</button>
-    </form>
-</body>
-</html>
+    <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
+
+        <!-- LOGIN CARD -->
+        <div class="card">
+
+            <div class="card-body p-4 p-md-5">
+
+                <!-- BRAND -->
+                <div class="text-center mb-4">
+
+                    <div class="mb-3">
+                        <i class="icon-base ri ri-bank-line text-primary"
+                           style="font-size: 3rem;"></i>
+                    </div>
+
+                    <h4 class="fw-bold mb-1">Welcome to BankingSys</h4>
+
+                    <p class="text-muted mb-0">
+                        Sign in to access your banking account.
+                    </p>
+
+                </div>
+
+                <!-- LOGIN FORM -->
+                <form method="post">
+
+                    {% csrf_token %}
+
+                    <!-- USERNAME -->
+                    <div class="mb-3">
+
+                        <label for="username" class="form-label">
+                            Username
+                        </label>
+
+                        <input type="text"
+                               name="username"
+                               id="username"
+                               class="form-control"
+                               placeholder="Enter your username"
+                               autocomplete="username"
+                               required>
+
+                    </div>
+
+                    <!-- PASSWORD -->
+                    <div class="mb-4">
+
+                        <label for="password" class="form-label">
+                            Password
+                        </label>
+
+                        <input type="password"
+                               name="password"
+                               id="password"
+                               class="form-control"
+                               placeholder="Enter your password"
+                               autocomplete="current-password"
+                               required>
+
+                    </div>
+
+                    <!-- LOGIN BUTTON -->
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="icon-base ri ri-login-box-line me-1"></i>
+                        Login
+                    </button>
+
+                    <!-- SIGNUP LINK -->
+                    <div class="text-center mt-4">
+
+                        <p class="text-muted mb-0">
+                            Don't have an account?
+                            <a href="{% url 'borrower_signup' %}"
+                               class="text-primary fw-medium">
+                                Create a Borrower Account
+                            </a>
+                        </p>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

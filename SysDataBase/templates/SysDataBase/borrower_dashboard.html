@@ -3,159 +3,155 @@
 
 {% block title %}My Dashboard | Banking System{% endblock %}
 
-{% block extra_css %}
-<style>
-    .dashboard-header {
-        background: linear-gradient(135deg, #102a43, #245b83);
-        color: white;
-        padding: 28px;
-        border-radius: 12px;
-        margin-bottom: 28px;
-    }
-
-    .dashboard-card {
-        background: white;
-        border-radius: 12px;
-        padding: 22px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        height: 100%;
-    }
-
-    .account-balance {
-        background: #f1f6fa;
-        border-radius: 10px;
-        padding: 18px;
-        margin: 18px 0;
-    }
-
-    .section-title {
-        font-weight: 600;
-        color: #17365d;
-        margin-bottom: 15px;
-    }
-
-    .table th {
-        white-space: nowrap;
-        color: #526477;
-        font-size: 13px;
-    }
-
-    .table td {
-        vertical-align: middle;
-    }
-
-    .dashboard-section {
-        scroll-margin-top: 20px;
-        margin-bottom: 30px;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 
+<!-- WELCOME BANNER -->
+<div class="borrower-dashboard-header mb-4"
+     style="background: linear-gradient(120deg, #15803d, #22c55e); color: white; padding: 28px 32px; border-radius: 12px;">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+        <div>
+            <p class="small text-uppercase fw-semibold mb-2">
+                My Banking Overview
+            </p>
+            <h3 class="fw-bold mb-2">
+                Welcome, {{ client.first_name }}!
+            </h3>
+            <p class="mb-0">
+                Manage your savings, monitor transactions, and keep track of your loans.
+            </p>
+        </div>
 
-<!-- DASHBOARD HEADER -->
-<div class="dashboard-header">
-    <h2 class="mb-1">Welcome, {{ client.first_name }}!</h2>
-    <p class="mb-0 opacity-75">
-        Manage your savings, monitor transactions, and keep track of your loans.
-    </p>
+        <div>
+            <a href="{% url 'loan_application_create' %}"
+               class="btn btn-light">
+                <i class="icon-base ri ri-file-add-line me-1"></i>
+                Apply for a Loan
+            </a>
+        </div>
+    </div>
 </div>
 
-<!-- MY SAVINGS -->
-<section id="savings" class="dashboard-section">
 
-    <h4 class="section-title">My Savings Account</h4>
+<!-- SAVINGS ACCOUNT -->
+<section id="savings" class="borrower-dashboard-section mb-4">
 
-    <div class="row">
+    <h5 class="fw-semibold mb-3">My Savings Account</h5>
+
+    <div class="row g-4">
 
         {% for account in savings_accounts %}
 
-        <div class="col-md-8 col-lg-7 mb-3">
-            <div class="dashboard-card">
+        <div class="col-12">
+            <div class="card h-100">
+                <div class="card-body p-4">
 
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <small class="text-muted">SAVINGS ACCOUNT</small>
-                        <h5 class="mt-1 mb-0">{{ account.account_no }}</h5>
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <small class="text-muted text-uppercase">
+                                Savings Account
+                            </small>
+                            <h5 class="fw-semibold mt-1 mb-0">
+                                {{ account.account_no }}
+                            </h5>
+                        </div>
+
+                        {% if account.status == "Active" %}
+                            <span class="badge bg-label-success">
+                                Active
+                            </span>
+                        {% elif account.status == "Pending Verification" %}
+                            <span class="badge bg-label-warning">
+                                Pending Verification
+                            </span>
+                        {% elif account.status == "Inactive" %}
+                            <span class="badge bg-label-secondary">
+                                Inactive
+                            </span>
+                        {% else %}
+                            <span class="badge bg-label-danger">
+                                {{ account.status }}
+                            </span>
+                        {% endif %}
                     </div>
 
-                    {% if account.status == "Active" %}
-                        <span class="badge bg-success">Active</span>
-                    {% elif account.status == "Pending Verification" %}
-                        <span class="badge bg-warning text-dark">
-                            Pending Verification
-                        </span>
+                    <!-- BALANCE -->
+                    <div class="borrower-account-balance mb-4">
+                        <small class="text-muted">Current Balance</small>
+                        <h2 class="fw-bold mb-0">
+                            ₱{{ account.current_balance|floatformat:2 }}
+                        </h2>
+                    </div>
+
+                    <!-- ACCOUNT DETAILS -->
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block mb-1">
+                                Annual Interest Rate
+                            </small>
+                            <p class="fw-semibold mb-0">
+                                {{ account.annual_interest_rate }}%
+                            </p>
+                        </div>
+
+                        <div class="col-6">
+                            <small class="text-muted d-block mb-1">
+                                Date Opened
+                            </small>
+                            <p class="fw-semibold mb-0">
+                                {{ account.opened_at|date:"M d, Y" }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- ACCOUNT STATUS -->
+                    {% if account.status == "Pending Verification" %}
+                        <div class="alert alert-warning mt-4 mb-0">
+                            <div class="fw-semibold mb-1">
+                                <i class="icon-base ri ri-information-line me-1"></i>
+                                Identity Verification Pending
+                            </div>
+                            <p class="mb-0">
+                                Your savings account has been created.
+                                Transactions will be available after your
+                                identity has been verified.
+                            </p>
+                        </div>
+
+                    {% elif account.status == "Active" %}
+                        <div class="alert alert-success mt-4 mb-0">
+                            Your savings account is active and ready for
+                            eligible banking transactions.
+                        </div>
+
                     {% elif account.status == "Inactive" %}
-                        <span class="badge bg-secondary">Inactive</span>
-                    {% else %}
-                        <span class="badge bg-danger">{{ account.status }}</span>
+                        <div class="alert alert-secondary mt-4 mb-0">
+                            Your account is currently inactive.
+                            Please contact the bank for assistance.
+                        </div>
+
+                    {% elif account.status == "Closed" %}
+                        <div class="alert alert-danger mt-4 mb-0">
+                            Your account has been closed.
+                            Please contact the bank for assistance.
+                        </div>
                     {% endif %}
+
                 </div>
-
-                <div class="account-balance">
-                    <small class="text-muted">Current Balance</small>
-                    <h2 class="fw-bold mb-0">
-                        ₱{{ account.current_balance|floatformat:2 }}
-                    </h2>
-                </div>
-
-                <div class="row">
-                    <div class="col-6">
-                        <small class="text-muted">Annual Interest Rate</small>
-                        <p class="fw-semibold mb-0">
-                            {{ account.annual_interest_rate }}%
-                        </p>
-                    </div>
-
-                    <div class="col-6">
-                        <small class="text-muted">Date Opened</small>
-                        <p class="fw-semibold mb-0">
-                            {{ account.opened_at|date:"M d, Y" }}
-                        </p>
-                    </div>
-                </div>
-
-                {% if account.status == "Pending Verification" %}
-                    <div class="alert alert-warning mt-4 mb-0">
-                        <strong>Identity verification pending</strong>
-                        <p class="mb-0 mt-1">
-                            Your savings account has been created.
-                            Transactions will be available after your
-                            identity has been verified.
-                        </p>
-                    </div>
-
-                {% elif account.status == "Active" %}
-                    <div class="alert alert-success mt-4 mb-0">
-                        Your savings account is active and ready for
-                        eligible banking transactions.
-                    </div>
-
-                {% elif account.status == "Inactive" %}
-                    <div class="alert alert-secondary mt-4 mb-0">
-                        Your account is currently inactive.
-                        Please contact the bank for assistance.
-                    </div>
-                {% elif account.status == "Closed" %}
-                    <div class="alert alert-danger mt-4 mb-0">
-                        Your account has been closed.
-                        Please contact the bank for assistance.
-                    </div>
-                {% endif %}
-
             </div>
         </div>
 
         {% empty %}
 
         <div class="col-12">
-            <div class="dashboard-card text-center py-5">
-                <h5>No Savings Account Found</h5>
-                <p class="text-muted mb-0">
-                    Your savings account will be automatically created
-                    during registration.
-                </p>
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="icon-base ri ri-wallet-3-line text-muted fs-1"></i>
+                    <h5 class="mt-3">No Savings Account Found</h5>
+                    <p class="text-muted mb-0">
+                        Your savings account will be automatically created
+                        during registration.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -164,270 +160,376 @@
     </div>
 </section>
 
+
 <!-- LOAN APPLICATIONS -->
-<section class="dashboard-section">
+<section class="borrower-dashboard-section mb-4">
 
-    <h4 class="section-title">My Loan Applications</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="fw-semibold mb-0">My Loan Applications</h5>
+    </div>
 
-    <div class="dashboard-card">
+    <div class="card">
+        <div class="card-body p-4">
 
-        <div class="table-responsive">
-            <table class="table table-hover">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
 
-                <thead>
-                    <tr>
-                        <th>Application ID</th>
-                        <th>Amount Requested</th>
-                        <th>Application Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+                    <thead>
+                        <tr>
+                            <th>Application ID</th>
+                            <th>Amount Requested</th>
+                            <th>Application Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
 
-                <tbody>
-                    {% for application in applications %}
-                    <tr>
-                        <td>#{{ application.id }}</td>
-                        <td>₱{{ application.amount_requested|floatformat:2 }}</td>
-                        <td>{{ application.application_date|date:"M d, Y" }}</td>
-                        <td>
-                            {% if application.status == "Approved" %}
-                                <span class="badge bg-success">Approved</span>
-                            {% elif application.status == "Rejected" %}
-                                <span class="badge bg-danger">Rejected</span>
-                            {% else %}
-                                <span class="badge bg-warning text-dark">Pending</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-3">
-                            No loan applications yet.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                    <tbody>
+                        {% for application in applications %}
+                        <tr>
+                            <td>#{{ application.id }}</td>
 
-            </table>
+                            <td>
+                                ₱{{ application.amount_requested|floatformat:2 }}
+                            </td>
+
+                            <td>
+                                {{ application.application_date|date:"M d, Y" }}
+                            </td>
+
+                            <td>
+                                {% if application.status == "Approved" %}
+                                    <span class="badge bg-label-success">
+                                        Approved
+                                    </span>
+                                {% elif application.status == "Rejected" %}
+                                    <span class="badge bg-label-danger">
+                                        Rejected
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-label-warning">
+                                        {{ application.status }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                No loan applications yet.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+            <div class="mt-3">
+                <a href="{% url 'loan_application_create' %}"
+                   class="btn btn-primary btn-sm">
+                    <i class="icon-base ri ri-file-add-line me-1"></i>
+                    Apply for a Loan
+                </a>
+            </div>
+
         </div>
-
-        <a href="{% url 'loan_application_create' %}"
-           class="btn btn-primary btn-sm">
-            Apply for a Loan
-        </a>
-
     </div>
 </section>
 
-<!-- ACTIVE LOANS -->
-<section class="dashboard-section">
 
-    <h4 class="section-title">My Loans</h4>
+<!-- MY LOANS -->
+<section class="borrower-dashboard-section mb-4">
 
-    <div class="dashboard-card">
+    <h5 class="fw-semibold mb-3">My Loans</h5>
 
-        <div class="table-responsive">
-            <table class="table table-hover">
+    <div class="card">
+        <div class="card-body p-4">
 
-                <thead>
-                    <tr>
-                        <th>Loan ID</th>
-                        <th>Principal</th>
-                        <th>Outstanding Balance</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
 
-                <tbody>
-                    {% for loan in loans %}
-                    <tr>
-                        <td>#{{ loan.id }}</td>
-                        <td>₱{{ loan.principal_amount|floatformat:2 }}</td>
-                        <td>₱{{ loan.outstanding_balance|floatformat:2 }}</td>
-                        <td>{{ loan.status }}</td>
-                        <td>
-                            <a href="{% url 'amortization_list' loan.id %}"
-                               class="btn btn-outline-primary btn-sm">
-                                View Schedule
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-3">
-                            No loan records available.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                    <thead>
+                        <tr>
+                            <th>Loan ID</th>
+                            <th>Principal</th>
+                            <th>Outstanding Balance</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
 
-            </table>
+                    <tbody>
+                        {% for loan in loans %}
+                        <tr>
+                            <td>#{{ loan.id }}</td>
+
+                            <td>
+                                ₱{{ loan.principal_amount|floatformat:2 }}
+                            </td>
+
+                            <td>
+                                ₱{{ loan.outstanding_balance|floatformat:2 }}
+                            </td>
+
+                            <td>
+                                <span class="badge bg-label-primary">
+                                    {{ loan.status }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <a href="{% url 'amortization_list' loan.id %}"
+                                   class="btn btn-outline-primary btn-sm">
+                                    View Schedule
+                                </a>
+                            </td>
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No loan records available.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
         </div>
-
     </div>
 </section>
 
-<!-- Borrower Transaction Request -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="mb-0">Make a Savings Transaction</h5>
-    </div>
-    <div class="card-body">
-        {% for account in savings_accounts %}
-            {% if account.status == "Active" %}
-                <form method="post" action="{% url 'borrower_transaction_request' %}">
-                    {% csrf_token %}
-                    {{ transaction_form.as_p }}
-                    
-                    <button type="submit" class="btn btn-primary">
-                        Submit Transaction
-                    </button>
-                </form>
-            {% else %}
-                <p class="text-muted">
-                    Your savings account is not active. You cannot make transactions at this time.
+
+<!-- SAVINGS TRANSACTION REQUEST -->
+<section class="borrower-dashboard-section mb-4">
+
+    <h5 class="fw-semibold mb-3">Make a Savings Transaction</h5>
+
+    <div class="card">
+        <div class="card-body p-4">
+
+            {% for account in savings_accounts %}
+
+                {% if account.status == "Active" %}
+
+                    <form method="post"
+                          action="{% url 'borrower_transaction_request' %}">
+
+                        {% csrf_token %}
+
+                        <div class="borrower-transaction-fields mb-3">
+                            {{ transaction_form.as_p }}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="icon-base ri ri-exchange-dollar-line me-1"></i>
+                            Submit Transaction
+                        </button>
+
+                    </form>
+
+                {% else %}
+
+                    <div class="alert alert-warning mb-0">
+                        <i class="icon-base ri ri-information-line me-1"></i>
+                        Your savings account is not active.
+                        You cannot make transactions at this time.
+                    </div>
+
+                {% endif %}
+
+            {% empty %}
+
+                <p class="text-muted mb-0">
+                    No savings account found.
                 </p>
-            {% endif %}
-        {% empty %}
-            <p>No savings account found.</p>
-        {% endfor %}
-    </div>
-</div>
 
-<!-- TRANSACTION HISTORY -->
-<section class="dashboard-section" id="transactions">
+            {% endfor %}
 
-    <h4 class="section-title">Recent Savings Transactions</h4>
-
-    <div class="dashboard-card">
-
-        <div class="table-responsive">
-            <table class="table table-hover">
-
-                <thead>
-                    <tr>
-                        <th>Reference</th>
-                        <th>Account</th>
-                        <th>Type</th>
-                        <th>Amount</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for item in savings_transactions %}
-                    <tr>
-                        <td>{{ item.reference_number }}</td>
-                        <td>{{ item.savings_account.account_no }}</td>
-                        <td>
-                            {% if item.transaction_type == "Deposit" %}
-                                <span class="badge bg-success">
-                                    Deposit
-                                </span>
-                            {% elif item.transaction_type == "Withdrawal" %}
-                                <span class="badge bg-danger">
-                                    Withdrawal
-                                </span>
-                            {% elif item.transaction_type == "Interest" %}
-                                <span class="badge bg-info text-dark">
-                                    Interest
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">
-                                    {{ item.transaction_type }}
-                                </span>
-                            {% endif %}
-                        </td>
-                        <td class="fw-semibold">
-                            ₱{{ item.amount|floatformat:2 }}
-                        </td>
-                        <td>{{ item.transaction_date|date:"M d, Y h:i A" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-3">
-                            No savings transactions available.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-
-            </table>
         </div>
-
     </div>
 </section>
+
+
+<!-- SAVINGS TRANSACTION HISTORY -->
+<section id="transactions" class="borrower-dashboard-section mb-4">
+
+    <h5 class="fw-semibold mb-3">Recent Savings Transactions</h5>
+
+    <div class="card">
+        <div class="card-body p-4">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Account</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for item in savings_transactions %}
+                        <tr>
+                            <td>{{ item.reference_number }}</td>
+
+                            <td>
+                                {{ item.savings_account.account_no }}
+                            </td>
+
+                            <td>
+                                {% if item.transaction_type == "Deposit" %}
+                                    <span class="badge bg-label-success">
+                                        Deposit
+                                    </span>
+                                {% elif item.transaction_type == "Withdrawal" %}
+                                    <span class="badge bg-label-danger">
+                                        Withdrawal
+                                    </span>
+                                {% elif item.transaction_type == "Interest" %}
+                                    <span class="badge bg-label-info">
+                                        Interest
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-label-secondary">
+                                        {{ item.transaction_type }}
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="fw-semibold">
+                                ₱{{ item.amount|floatformat:2 }}
+                            </td>
+
+                            <td>
+                                {{ item.transaction_date|date:"M d, Y h:i A" }}
+                            </td>
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No savings transactions available.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+</section>
+
 
 <!-- LOAN PAYMENT HISTORY -->
-<section class="dashboard-section">
+<section class="borrower-dashboard-section mb-4">
 
-    <h4 class="section-title">Recent Loan Payments</h4>
+    <h5 class="fw-semibold mb-3">Recent Loan Payments</h5>
 
-    <div class="dashboard-card">
+    <div class="card">
+        <div class="card-body p-4">
 
-        <div class="table-responsive">
-            <table class="table table-hover">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
 
-                <thead>
-                    <tr>
-                        <th>Reference</th>
-                        <th>Amount</th>
-                        <th>Payment Date</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+                    <thead>
+                        <tr>
+                            <th>Reference</th>
+                            <th>Amount</th>
+                            <th>Payment Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
 
-                <tbody>
-                    {% for payment in payments %}
-                    <tr>
-                        <td>{{ payment.reference_number }}</td>
-                        <td>₱{{ payment.amount|floatformat:2 }}</td>
-                        <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-                        <td>{{ payment.status }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-3">
-                            No loan payments recorded.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.reference_number }}</td>
 
-            </table>
+                            <td>
+                                ₱{{ payment.amount|floatformat:2 }}
+                            </td>
+
+                            <td>
+                                {{ payment.payment_date|date:"M d, Y" }}
+                            </td>
+
+                            <td>
+                                <span class="badge bg-label-primary">
+                                    {{ payment.status }}
+                                </span>
+                            </td>
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">
+                                No loan payments recorded.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
         </div>
-
     </div>
 </section>
 
+
 <!-- NOTIFICATIONS -->
-<section class="dashboard-section" id="notifications">
+<section id="notifications" class="borrower-dashboard-section mb-4">
 
-    <h4 class="section-title">Recent Notifications</h4>
+    <h5 class="fw-semibold mb-3">Recent Notifications</h5>
 
-    <div class="dashboard-card">
+    <div class="card">
+        <div class="card-body p-4">
 
-        {% for notification in notifications %}
+            {% for notification in notifications %}
 
             <div class="border-bottom py-3">
 
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
+
                     <strong>{{ notification.channel }}</strong>
 
-                    <span class="badge
-                        {% if notification.status == 'Sent' %}
-                            bg-success
-                        {% elif notification.status == 'Failed' %}
-                            bg-danger
-                        {% else %}
-                            bg-secondary
-                        {% endif %}">
-                        {{ notification.status }}
-                    </span>
+                    {% if notification.status == "Sent" %}
+                        <span class="badge bg-label-success">
+                            Sent
+                        </span>
+                    {% elif notification.status == "Failed" %}
+                        <span class="badge bg-label-danger">
+                            Failed
+                        </span>
+                    {% else %}
+                        <span class="badge bg-label-secondary">
+                            {{ notification.status }}
+                        </span>
+                    {% endif %}
+
                 </div>
 
-                <p class="mb-1">{{ notification.message }}</p>
+                <p class="mb-1">
+                    {{ notification.message }}
+                </p>
 
                 <small class="text-muted">
                     {{ notification.created_at|date:"M d, Y h:i A" }}
@@ -435,14 +537,18 @@
 
             </div>
 
-        {% empty %}
+            {% empty %}
 
-            <p class="text-muted mb-0">
-                You don't have any notifications yet.
-            </p>
+            <div class="text-center py-4">
+                <i class="icon-base ri ri-notification-3-line text-muted fs-2"></i>
+                <p class="text-muted mt-2 mb-0">
+                    You don't have any notifications yet.
+                </p>
+            </div>
 
-        {% endfor %}
+            {% endfor %}
 
+        </div>
     </div>
 </section>
 
