@@ -1,87 +1,140 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Management | Banking System</title>
-</head>
+{% extends "SysDataBase/base.html" %}
 
-<body>
+{% block title %}Client Management | Banking System{% endblock %}
 
-    <h1>Client Management</h1>
-    <p>Manage registered banking clients.</p>
+{% block content %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+<!-- Page Header -->
+<div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Client Management</h4>
+        <p class="text-muted mb-0">
+            Manage registered banking clients.
+        </p>
+    </div>
 
-    <p>
-        <a href="{% url 'client_create' %}">
-            + Add New Client
-        </a>
-    </p>
+    <a href="{% url 'client_create' %}" class="btn btn-primary">
+        <i class="icon-base ri ri-user-add-line me-1"></i>
+        Add New Client
+    </a>
+</div>
 
-    <table border="1" cellpadding="10" cellspacing="0">
+<!-- Client Table -->
+<div class="card">
 
-        <thead>
-            <tr>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Email</th>
-                <th>Birth Date</th>
-                <th>Address</th>
-                <th>Monthly Income</th>
-                <th>Phone Number</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="card-title mb-0">Client Records</h5>
+        <span class="badge bg-label-primary">
+            Active Clients
+        </span>
+    </div>
 
-        <tbody>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
 
-            {% for client in clients %}
+            <thead>
                 <tr>
-                    <td>{{ client.first_name }}</td>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Email</th>
+                    <th>Birth Date</th>
+                    <th>Address</th>
+                    <th>Monthly Income</th>
+                    <th>Phone Number</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for client in clients %}
+                <tr>
+                    <td>
+                        <span class="fw-medium">
+                            {{ client.first_name }}
+                        </span>
+                    </td>
+
                     <td>{{ client.last_name }}</td>
-                    <td>{{ client.users.email }}</td>
-                    <td>{{ client.birth_date }}</td>
+
+                    <td>{{ client.users.email|default:"—" }}</td>
+
+                    <td>{{ client.birth_date|date:"M d, Y" }}</td>
+
                     <td>{{ client.address }}</td>
-                    <td>{{ client.monthly_income }}</td>
+
+                    <td>
+                        ₱{{ client.monthly_income|floatformat:2 }}
+                    </td>
+
                     <td>{{ client.phone_number }}</td>
 
                     <td>
-                        <a href="{% url 'client_update' client.id %}">
-                            Edit
+                        <div class="d-flex align-items-center justify-content-center gap-2">
+
+                            <!-- Edit Client -->
+                            <a href="{% url 'client_update' client.id %}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="Edit Client">
+                                <i class="icon-base ri ri-edit-line me-1"></i>
+                                Edit
+                            </a>
+
+                            <!-- Deactivate Client -->
+                            <form method="post"
+                                  action="{% url 'client_deactivate' client.id %}"
+                                  class="m-0"
+                                  onsubmit="return confirm('Are you sure you want to deactivate this client?');">
+
+                                {% csrf_token %}
+
+                                <button type="submit"
+                                        class="btn btn-sm btn-outline-danger"
+                                        title="Deactivate Client">
+                                    <i class="icon-base ri ri-user-unfollow-line me-1"></i>
+                                    Deactivate
+                                </button>
+
+                            </form>
+
+                        </div>
+                    </td>
+                </tr>
+
+                {% empty %}
+
+                <!-- Empty State -->
+                <tr>
+                    <td colspan="8" class="text-center py-5">
+
+                        <div class="mb-3">
+                            <i class="icon-base ri ri-group-line text-muted"
+                               style="font-size: 3rem;"></i>
+                        </div>
+
+                        <h6 class="mb-1">No Client Records</h6>
+
+                        <p class="text-muted mb-3">
+                            No active client records found.
+                        </p>
+
+                        <a href="{% url 'client_create' %}"
+                           class="btn btn-primary btn-sm">
+                            <i class="icon-base ri ri-user-add-line me-1"></i>
+                            Add New Client
                         </a>
 
-                        |
-
-                        <form method="POST"
-                              action="{% url 'client_deactivate' client.id %}"
-                              style="display: inline;">
-                            {% csrf_token %}
-
-                            <button type="submit"
-                                    onclick="return confirm('Are you sure you want to deactivate this client?');">
-                                Deactivate
-                            </button>
-                        </form>
                     </td>
                 </tr>
 
-            {% empty %}
-                <tr>
-                    <td colspan="8">
-                        No active client records found.
-                    </td>
-                </tr>
-            {% endfor %}
+                {% endfor %}
 
-        </tbody>
+            </tbody>
 
-    </table>
+        </table>
+    </div>
 
-</body>
-</html>
+</div>
+
+{% endblock %}

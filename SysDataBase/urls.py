@@ -98,4 +98,9 @@ urlpatterns = [
     "loans/applications/<int:application_id>/manual-review/",
     views.loan_application_manual_review,
     name="loan_application_manual_review"),
+    path(
+        "borrower/profile/",
+        views.borrower_profile,
+        name="borrower_profile"
+    ),
 ]

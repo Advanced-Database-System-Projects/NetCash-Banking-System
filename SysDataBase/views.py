@@ -1625,3 +1625,26 @@ def record_loan_application_history(
     )
 
 
+## PROFILE ##
+
+@login_required
+def borrower_profile(request):
+    role = request.user.roles.roles_name if request.user.roles else None
+
+    if role != "Borrower":
+        return HttpResponseForbidden(
+            "This profile page is for borrowers only."
+        )
+
+    try:
+        client = request.user.client_profile
+    except Client_profile.DoesNotExist:
+        return HttpResponseForbidden(
+            "No client profile found for this account."
+        )
+
+    return render(
+        request,
+        "SysDataBase/borrower_profile.html",
+        {"client": client}
+    )

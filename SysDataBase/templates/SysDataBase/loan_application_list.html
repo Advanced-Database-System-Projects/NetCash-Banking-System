@@ -1,53 +1,155 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loan Applications | Banking System</title>
-</head>
-<body>
+{% extends "SysDataBase/base.html" %}
 
-    <h1>Loan Applications</h1>
-    <p>Manage and review client loan applications.</p>
+{% block title %}Loan Applications | Banking System{% endblock %}
 
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Application ID</th>
-                <th>Client</th>
-                <th>Amount Requested</th>
-                <th>Term (Months)</th>
-                <th>Purpose</th>
-                <th>Status</th>
-                <th>Application Date</th>
-                <th>Action</th>
-            </tr>
-        </thead>
+{% block content %}
 
-        <tbody>
-            {% for application in applications %}
-            <tr>
-                <td>{{ application.id }}</td>
-                <td>{{ application.client_profile }}</td>
-                <td>{{ application.amount_requested }}</td>
-                <td>{{ application.requested_term_months }}</td>
-                <td>{{ application.purpose }}</td>
-                <td>{{ application.status }}</td>
-                <td>{{ application.application_date|date:"M d, Y" }}</td>
-                <td>
-                    <a href="{% url 'loan_application_detail' application.id %}">
-                        View Details
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8">No loan applications found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- Page Header -->
+<div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Loan Applications</h4>
+        <p class="text-muted mb-0">
+            Manage and review client loan applications.
+        </p>
+    </div>
 
-</body>
-</html>
+    <span class="badge bg-label-primary">
+        <i class="icon-base ri ri-file-list-3-line me-1"></i>
+        Loan Management
+    </span>
+</div>
+
+<!-- Loan Applications Table -->
+<div class="card">
+
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="card-title mb-0">Application Records</h5>
+        <span class="text-muted small">
+            Client loan requests
+        </span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+
+            <thead>
+                <tr>
+                    <th>Application ID</th>
+                    <th>Client</th>
+                    <th>Amount Requested</th>
+                    <th>Term</th>
+                    <th>Purpose</th>
+                    <th>Status</th>
+                    <th>Application Date</th>
+                    <th class="text-center">Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for application in applications %}
+                <tr>
+
+                    <!-- Application ID -->
+                    <td>
+                        <span class="fw-medium">
+                            #{{ application.id }}
+                        </span>
+                    </td>
+
+                    <!-- Client -->
+                    <td>
+                        <span class="fw-medium">
+                            {{ application.client_profile }}
+                        </span>
+                    </td>
+
+                    <!-- Requested Amount -->
+                    <td>
+                        <span class="fw-semibold">
+                            ₱{{ application.amount_requested|floatformat:2 }}
+                        </span>
+                    </td>
+
+                    <!-- Loan Term -->
+                    <td>
+                        {{ application.requested_term_months }} months
+                    </td>
+
+                    <!-- Purpose -->
+                    <td>
+                        {{ application.purpose }}
+                    </td>
+
+                    <!-- Application Status -->
+                    <td>
+                        {% with status=application.status|lower %}
+                            {% if status == "approved" %}
+                                <span class="badge bg-label-success">
+                                    {{ application.status }}
+                                </span>
+                            {% elif status == "pending" %}
+                                <span class="badge bg-label-warning">
+                                    {{ application.status }}
+                                </span>
+                            {% elif status == "rejected" or status == "declined" %}
+                                <span class="badge bg-label-danger">
+                                    {{ application.status }}
+                                </span>
+                            {% elif status == "under review" or status == "under_review" %}
+                                <span class="badge bg-label-info">
+                                    {{ application.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-label-secondary">
+                                    {{ application.status }}
+                                </span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+
+                    <!-- Application Date -->
+                    <td>
+                        {{ application.application_date|date:"M d, Y" }}
+                    </td>
+
+                    <!-- View Details -->
+                    <td class="text-center">
+                        <a href="{% url 'loan_application_detail' application.id %}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="icon-base ri ri-eye-line me-1"></i>
+                            View Details
+                        </a>
+                    </td>
+
+                </tr>
+
+                {% empty %}
+
+                <!-- Empty State -->
+                <tr>
+                    <td colspan="8" class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="icon-base ri ri-file-search-line text-muted"
+                               style="font-size: 2.5rem;"></i>
+                        </div>
+
+                        <h6 class="mb-1">No Loan Applications</h6>
+
+                        <p class="text-muted mb-0">
+                            No loan applications found.
+                        </p>
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}
