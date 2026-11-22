@@ -121,6 +121,13 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {% if request.resolver_match.url_name == 'map_explorer' %}active{% endif %}">
+                        <a href="{% url 'map_explorer' %}" class="menu-link">
+                            <i class="menu-icon icon-base bx bx-map"></i>
+                            <div>Map</div>
+                        </a>
+                    </li>
+
                 </ul>
             </aside>
 
