@@ -492,7 +492,7 @@ def loan_application_manual_review(request, application_id):
         application.risk_category = risk_category
         application.manually_recommended_rate = interest_rate
         application.risk_review_notes = review_notes
-        application.risk_reviewed_by = request.user
+        application.risk_review_by = request.user
         application.risk_reviewed_at = timezone.now()
         application.save()
 
