@@ -1,92 +1,176 @@
 
 {% extends 'SysDataBase/base.html' %}
 
+{% block title %}Loan Payment History | Banking System{% endblock %}
+
 {% block content %}
 
-<div class="container mt-4">
+<!-- PAGE HEADER -->
+<div class="card mb-4 border-0"
+     style="background: linear-gradient(120deg, #15803d, #22c55e); border-radius: 12px;">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2>Loan Payment History</h2>
-            <p class="text-muted">
-                View and monitor recorded loan payments.
-            </p>
+    <div class="card-body p-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+
+            <div>
+                <p class="small text-uppercase fw-semibold mb-2"
+                   style="color: #dcfce7;">
+                    BANKING SYSTEM
+                </p>
+
+                <h4 class="fw-bold text-white mb-2">
+                    Loan Payment History
+                </h4>
+
+                <p class="text-white mb-0">
+                    View and monitor recorded loan payments.
+                </p>
+            </div>
+
+            <a href="{% url 'borrower_dashboard' %}"
+               class="btn btn-light flex-shrink-0">
+
+                <i class="icon-base ri ri-arrow-left-line me-1"></i>
+                Back to Dashboard
+
+            </a>
+
         </div>
     </div>
+</div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
+<!-- PAYMENT RECORDS CARD -->
+<div class="card">
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
+    <div class="card-header border-bottom p-4">
 
-                    <thead class="table-light">
-                        <tr>
-                            <th>Reference No.</th>
-                            <th>Borrower</th>
-                            <th>Loan ID</th>
-                            <th>Installment</th>
-                            <th>Payment Date</th>
-                            <th>Amount</th>
-                            <th>Payment Method</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
+        <div class="d-flex align-items-center gap-3">
 
-                    <tbody>
-                        {% for payment in payments %}
-                        <tr>
-                            <td>{{ payment.reference_number }}</td>
+            <div class="d-flex align-items-center justify-content-center rounded"
+                 style="width: 48px; height: 48px; background: #eaf8ee;">
 
-                            <td>
-                                {{ payment.loans.loan_application.client_profile.first_name }}
-                                {{ payment.loans.loan_application.client_profile.last_name }}
-                            </td>
+                <i class="icon-base ri ri-bank-card-line"
+                   style="font-size: 24px; color: #15803d;"></i>
 
-                            <td>{{ payment.loans.id }}</td>
+            </div>
 
-                            <td>
-                                {{ payment.amortization_schedule.installment_no }}
-                            </td>
+            <div>
+                <h5 class="fw-semibold mb-1">
+                    Payment Records
+                </h5>
 
-                            <td>{{ payment.payment_date|date:"M d, Y" }}</td>
-
-                            <td>
-                                ₱{{ payment.amount|floatformat:2 }}
-                            </td>
-
-                            <td>{{ payment.payment_method }}</td>
-
-                            <td>
-                                {% if payment.status == "Completed" %}
-                                    <span class="badge bg-success">
-                                        Completed
-                                    </span>
-                                {% elif payment.status == "Pending" %}
-                                    <span class="badge bg-warning text-dark">
-                                        Pending
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-danger">
-                                        Failed
-                                    </span>
-                                {% endif %}
-                            </td>
-                        </tr>
-
-                        {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
-                                No payment records found.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-
-                </table>
+                <p class="text-muted mb-0">
+                    Details of recorded loan payments.
+                </p>
             </div>
 
         </div>
+
+    </div>
+
+    <div class="card-body p-4">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+                    <tr>
+                        <th>Reference No.</th>
+                        <th>Borrower</th>
+                        <th>Loan ID</th>
+                        <th>Installment</th>
+                        <th>Payment Date</th>
+                        <th>Amount</th>
+                        <th>Payment Method</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for payment in payments %}
+
+                    <tr>
+
+                        <td class="fw-semibold">
+                            {{ payment.reference_number }}
+                        </td>
+
+                        <td>
+                            {{ payment.loans.loan_application.client_profile.first_name }}
+                            {{ payment.loans.loan_application.client_profile.last_name }}
+                        </td>
+
+                        <td>
+                            {{ payment.loans.id }}
+                        </td>
+
+                        <td>
+                            {{ payment.amortization_schedule.installment_no }}
+                        </td>
+
+                        <td>
+                            {{ payment.payment_date|date:"M d, Y" }}
+                        </td>
+
+                        <td class="fw-semibold">
+                            ₱{{ payment.amount|floatformat:2 }}
+                        </td>
+
+                        <td>
+                            {{ payment.payment_method }}
+                        </td>
+
+                        <td>
+
+                            {% if payment.status == "Completed" %}
+                                <span class="badge bg-success">
+                                    Completed
+                                </span>
+
+                            {% elif payment.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">
+                                    Pending
+                                </span>
+
+                            {% else %}
+                                <span class="badge bg-danger">
+                                    {{ payment.status|default:"Failed" }}
+                                </span>
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+
+                            <i class="icon-base ri ri-bank-card-line"
+                               style="font-size: 36px; color: #15803d;"></i>
+
+                            <h6 class="fw-semibold mt-3 mb-2">
+                                No Payment Records Yet
+                            </h6>
+
+                            <p class="text-muted mb-0">
+                                Loan payment records will appear here once payments are recorded.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
     </div>
 
 </div>

@@ -1,0 +1,224 @@
+
+{% extends 'SysDataBase/base.html' %}
+
+{% block title %}My Profile | Banking System{% endblock %}
+
+{% block content %}
+
+<!-- PROFILE HEADER -->
+<div class="card mb-4 border-0"
+     style="background: linear-gradient(120deg, #15803d, #22c55e); border-radius: 12px;">
+    <div class="card-body p-4">
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <p class="small text-uppercase fw-semibold mb-2"
+                   style="color: #dcfce7;">
+                    MY BANKING
+                </p>
+
+                <h4 class="fw-bold text-white mb-2">
+                    My Profile
+                </h4>
+
+                <p class="text-white mb-0">
+                    View your personal information and account verification status.
+                </p>
+            </div>
+
+            <a href="{% url 'borrower_dashboard' %}"
+               class="btn btn-light flex-shrink-0">
+                <i class="icon-base ri ri-arrow-left-line me-1"></i>
+                Back to Dashboard
+            </a>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- PROFILE OVERVIEW -->
+<div class="card mb-4">
+    <div class="card-body p-4">
+
+        <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+
+            <div class="d-flex align-items-center justify-content-center rounded-circle"
+                 style="width: 70px; height: 70px; background: #eaf8ee;">
+                <i class="icon-base ri ri-user-line"
+                   style="font-size: 36px; color: #15803d;"></i>
+            </div>
+
+            <div class="flex-grow-1">
+                <h4 class="fw-bold mb-1">
+                    {{ client.first_name }} {{ client.last_name }}
+                </h4>
+
+                <p class="text-muted mb-2">
+                    @{{ request.user.username }}
+                </p>
+
+                {% if client.identity_verification_status == "Verified" %}
+                    <span class="badge bg-label-success">
+                        <i class="icon-base ri ri-checkbox-circle-line me-1"></i>
+                        Verified Account
+                    </span>
+                {% elif client.identity_verification_status == "Pending" %}
+                    <span class="badge bg-label-warning">
+                        <i class="icon-base ri ri-time-line me-1"></i>
+                        Pending Verification
+                    </span>
+                {% else %}
+                    <span class="badge bg-label-danger">
+                        Verification Rejected
+                    </span>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+
+<!-- PERSONAL INFORMATION -->
+<div class="card mb-4">
+
+    <div class="card-header border-bottom p-4">
+        <div class="d-flex align-items-center gap-3">
+
+            <div class="d-flex align-items-center justify-content-center rounded"
+                 style="width: 48px; height: 48px; background: #eaf8ee;">
+                <i class="icon-base ri ri-user-3-line"
+                   style="font-size: 24px; color: #15803d;"></i>
+            </div>
+
+            <div>
+                <h5 class="fw-semibold mb-1">
+                    Personal Information
+                </h5>
+
+                <p class="text-muted mb-0">
+                    Your registered personal details.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="row g-4">
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">First Name</label>
+                <p class="fw-semibold mb-0">
+                    {{ client.first_name }}
+                </p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Last Name</label>
+                <p class="fw-semibold mb-0">
+                    {{ client.last_name }}
+                </p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Date of Birth</label>
+                <p class="fw-semibold mb-0">
+                    {{ client.birth_date|date:"F d, Y" }}
+                </p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Phone Number</label>
+                <p class="fw-semibold mb-0">
+                    {{ client.phone_number }}
+                </p>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label text-muted">Address</label>
+                <p class="fw-semibold mb-0">
+                    {{ client.address }}
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ACCOUNT INFORMATION -->
+<div class="card mb-4">
+
+    <div class="card-header border-bottom p-4">
+        <div class="d-flex align-items-center gap-3">
+
+            <div class="d-flex align-items-center justify-content-center rounded"
+                 style="width: 48px; height: 48px; background: #eaf8ee;">
+                <i class="icon-base ri ri-shield-user-line"
+                   style="font-size: 24px; color: #15803d;"></i>
+            </div>
+
+            <div>
+                <h5 class="fw-semibold mb-1">
+                    Account Information
+                </h5>
+
+                <p class="text-muted mb-0">
+                    Your login account and verification details.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+
+        <div class="row g-4">
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Username</label>
+                <p class="fw-semibold mb-0">
+                    {{ request.user.username }}
+                </p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Email Address</label>
+                <p class="fw-semibold mb-0">
+                    {{ request.user.email|default:"Not provided" }}
+                </p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Account Type</label>
+                <p class="fw-semibold mb-0">Borrower</p>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label text-muted">Identity Verification</label>
+
+                {% if client.identity_verification_status == "Verified" %}
+                    <span class="badge bg-label-success">
+                        Verified
+                    </span>
+                {% elif client.identity_verification_status == "Pending" %}
+                    <span class="badge bg-label-warning">
+                        Pending
+                    </span>
+                {% else %}
+                    <span class="badge bg-label-danger">
+                        Rejected
+                    </span>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

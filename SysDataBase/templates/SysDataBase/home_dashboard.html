@@ -1,156 +1,269 @@
+
 {% extends "SysDataBase/base.html" %}
 
+{% block title %}Dashboard | Banking System{% endblock %}
+
 {% block content %}
-<style>
-    .dashboard {
-        padding: 25px;
-    }
 
-    .dashboard h1 {
-        margin-bottom: 5px;
-    }
+<!-- Dashboard Header -->
+<div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between mb-4 gap-2">
+    <div>
+        <h4 class="mb-1 fw-bold">Banking System Dashboard</h4>
+        <p class="text-muted mb-0">
+            Welcome, {{ request.user.username }}!
+            Your role: {{ role|default:"No role assigned" }}
+        </p>
+    </div>
 
-    .dashboard-subtitle {
-        color: #666;
-        margin-bottom: 25px;
-    }
+    <span class="badge bg-label-primary align-self-start align-self-sm-center">
+        <i class="icon-base ri ri-dashboard-line me-1"></i>
+        Overview
+    </span>
+</div>
 
-    .stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 18px;
-        margin-bottom: 30px;
-    }
+<!-- System Overview -->
+{% if request.user.is_staff %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0">System Overview</h5>
+    <span class="text-muted small">Banking activity summary</span>
+</div>
 
-    .stat-card, .menu-card {
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #ddd;
-    }
+<div class="row g-4 mb-5">
 
-    .stat-card h3 {
-        color: #666;
-        font-size: 14px;
-    }
-
-    .stat-card p {
-        font-size: 28px;
-        font-weight: bold;
-        margin: 8px 0 0;
-    }
-
-    .menu-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 18px;
-    }
-
-    .menu-card a {
-        color: #2457a7;
-        text-decoration: none;
-        font-weight: bold;
-    }
-</style>
-
-<div class="dashboard">
-    <h1>Banking System Dashboard</h1>
-
-    <p class="dashboard-subtitle">
-        Welcome, {{ request.user.username }}!
-        Your role: {{ role|default:"No role assigned" }}
-    </p>
-
-    {% if request.user.is_staff and role in "Admin,Staff,Loan Officer" %}
-    <h2>System Overview</h2>
-
-    <div class="stats">
-        <div class="stat-card">
-            <h3>Total Clients</h3>
-            <p>{{ total_clients }}</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Loan Applications</h3>
-            <p>{{ total_applications }}</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Pending Applications</h3>
-            <p>{{ pending_applications }}</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Total Loans</h3>
-            <p>{{ total_loans }}</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Savings Accounts</h3>
-            <p>{{ total_savings_accounts }}</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Recorded Payments</h3>
-            <p>{{ total_payments }}</p>
+    <!-- Total Clients -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Total Clients</p>
+                    <h3 class="mb-0">{{ total_clients }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-primary p-3">
+                    <i class="icon-base ri ri-group-line ri-2x"></i>
+                </span>
+            </div>
         </div>
     </div>
+
+    <!-- Loan Applications -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Loan Applications</p>
+                    <h3 class="mb-0">{{ total_applications }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-info p-3">
+                    <i class="icon-base ri ri-file-text-line ri-2x"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Applications -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Pending Applications</p>
+                    <h3 class="mb-0">{{ pending_applications }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-warning p-3">
+                    <i class="icon-base ri ri-time-line ri-2x"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Loans -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Total Loans</p>
+                    <h3 class="mb-0">{{ total_loans }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-success p-3">
+                    <i class="icon-base ri ri-bank-line ri-2x"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Savings Accounts -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Savings Accounts</p>
+                    <h3 class="mb-0">{{ total_savings_accounts }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-primary p-3">
+                    <i class="icon-base ri ri-wallet-3-line ri-2x"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recorded Payments -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <div class="card h-100">
+            <div class="card-body d-flex align-items-center justify-content-between">
+                <div>
+                    <p class="text-muted mb-2">Recorded Payments</p>
+                    <h3 class="mb-0">{{ total_payments }}</h3>
+                </div>
+                <span class="avatar-initial rounded bg-label-success p-3">
+                    <i class="icon-base ri ri-bank-card-line ri-2x"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+<!-- Quick Navigation -->
+<h5 class="mb-3">Quick Navigation</h5>
+
+<div class="row g-4">
+
+    {% if request.user.is_staff %}
+
+    <!-- Client Management -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'client_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-primary mb-3">
+                    <i class="icon-base ri ri-group-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Client Management</h6>
+                <p class="text-muted small mb-0">Manage client profiles.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Loan Applications -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'loan_application_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-info mb-3">
+                    <i class="icon-base ri ri-file-text-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Loan Applications</h6>
+                <p class="text-muted small mb-0">Review and manage applications.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Loan Records -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'loan_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-success mb-3">
+                    <i class="icon-base ri ri-folder-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Loan Records</h6>
+                <p class="text-muted small mb-0">Monitor approved and active loans.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Savings Accounts -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'savings_account_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-primary mb-3">
+                    <i class="icon-base ri ri-wallet-3-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Savings Accounts</h6>
+                <p class="text-muted small mb-0">Manage client savings accounts.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Savings Transactions -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'savings_transaction_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-info mb-3">
+                    <i class="icon-base ri ri-exchange-dollar-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Savings Transactions</h6>
+                <p class="text-muted small mb-0">View savings deposits and withdrawals.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Payment History -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'loan_payment_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-success mb-3">
+                    <i class="icon-base ri ri-bank-card-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Payment History</h6>
+                <p class="text-muted small mb-0">View recorded loan payments.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Financial Ledger -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'transaction_record_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-warning mb-3">
+                    <i class="icon-base ri ri-book-2-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Financial Ledger</h6>
+                <p class="text-muted small mb-0">View debit and credit records.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Notifications -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{% url 'notification_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-primary mb-3">
+                    <i class="icon-base ri ri-notification-3-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Notifications</h6>
+                <p class="text-muted small mb-0">Manage notification records.</p>
+            </div>
+        </a>
+    </div>
+
+    {% else %}
+
+    <!-- Borrower: Apply for Loan -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <a href="{% url 'loan_application_create' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-primary mb-3">
+                    <i class="icon-base ri ri-file-add-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">Apply for a Loan</h6>
+                <p class="text-muted small mb-0">Submit a new loan application.</p>
+            </div>
+        </a>
+    </div>
+
+    <!-- Borrower: Payment History -->
+    <div class="col-12 col-sm-6 col-xl-4">
+        <a href="{% url 'loan_payment_list' %}" class="card h-100 text-decoration-none text-body">
+            <div class="card-body">
+                <span class="badge bg-label-success mb-3">
+                    <i class="icon-base ri ri-bank-card-line ri-lg"></i>
+                </span>
+                <h6 class="card-title mb-1">My Payment History</h6>
+                <p class="text-muted small mb-0">View your recorded loan payments.</p>
+            </div>
+        </a>
+    </div>
+
     {% endif %}
 
-    <h2>Quick Navigation</h2>
-
-    <div class="menu-grid">
-        {% if request.user.is_staff %}
-            <div class="menu-card">
-                <a href="{% url 'client_list' %}">Client Management</a>
-                <p>Manage client profiles.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'loan_application_list' %}">Loan Applications</a>
-                <p>Review and manage applications.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'loan_list' %}">Loan Records</a>
-                <p>Monitor approved and active loans.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'savings_account_list' %}">Savings Accounts</a>
-                <p>Manage client savings accounts.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'savings_transaction_list' %}">Savings Transactions</a>
-                <p>View savings deposits and withdrawals.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'loan_payment_list' %}">Payment History</a>
-                <p>View recorded loan payments.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'transaction_record_list' %}">Financial Ledger</a>
-                <p>View debit and credit records.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'notification_list' %}">Notifications</a>
-                <p>Manage notification records.</p>
-            </div>
-        {% else %}
-            <div class="menu-card">
-                <a href="{% url 'loan_application_create' %}">Apply for a Loan</a>
-                <p>Submit a new loan application.</p>
-            </div>
-
-            <div class="menu-card">
-                <a href="{% url 'loan_payment_list' %}">My Payment History</a>
-                <p>View your recorded loan payments.</p>
-            </div>
-        {% endif %}
-    </div>
 </div>
+
 {% endblock %}

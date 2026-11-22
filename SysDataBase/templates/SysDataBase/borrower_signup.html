@@ -1,27 +1,169 @@
+
 {% extends 'SysDataBase/base.html' %}
 
 {% block title %}Borrower Registration | Banking System{% endblock %}
 
 {% block content %}
 
-<h1>Borrower Registration</h1>
-<p>Create your borrower account.</p>
+<!-- PAGE HEADER -->
+<div class="row justify-content-center mb-4">
+    <div class="col-12 col-lg-10">
 
-<form method="POST" enctype="multipart/form-data">
-    {% csrf_token %}
+        <div class="text-center">
+            <h4 class="fw-bold mb-2">Create Your Borrower Account</h4>
+            <p class="text-muted mb-0">
+                Complete the registration form to get started with BankingSys.
+            </p>
+        </div>
 
-    <h3>Account Information</h3>
-    {{ user_form.as_p }}
+    </div>
+</div>
 
-    <h3>Personal Information</h3>
-    {{ profile_form.as_p }}
+<!-- REGISTRATION FORM -->
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-10 col-xl-9">
 
-    <button type="submit">Create Account</button>
-</form>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
 
-<p>
-    Already have an account?
-    <a href="{% url 'user_login' %}">Log in here</a>
-</p>
+            <!-- ACCOUNT INFORMATION -->
+            <div class="card mb-4">
+
+                <div class="card-header">
+                    <h5 class="card-title mb-1">
+                        <i class="icon-base ri ri-user-settings-line me-2"></i>
+                        Account Information
+                    </h5>
+                    <p class="text-muted mb-0">
+                        Enter your account details and login credentials.
+                    </p>
+                </div>
+
+                <div class="card-body">
+
+                    {% if user_form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ user_form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+
+                        {% for field in user_form %}
+                        <div class="col-12 col-md-6">
+
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                                {% if field.field.required %}
+                                    <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ field }}
+
+                            {% if field.help_text %}
+                                <div class="form-text">
+                                    {{ field.help_text }}
+                                </div>
+                            {% endif %}
+
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="icon-base ri ri-error-warning-line me-1"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- PERSONAL INFORMATION -->
+            <div class="card mb-4">
+
+                <div class="card-header">
+                    <h5 class="card-title mb-1">
+                        <i class="icon-base ri ri-profile-line me-2"></i>
+                        Personal Information
+                    </h5>
+                    <p class="text-muted mb-0">
+                        Provide your personal and contact information.
+                    </p>
+                </div>
+
+                <div class="card-body">
+
+                    {% if profile_form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ profile_form.non_field_errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+
+                        {% for field in profile_form %}
+                        <div class="col-12 col-md-6">
+
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}
+                                {% if field.field.required %}
+                                    <span class="text-danger">*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ field }}
+
+                            {% if field.help_text %}
+                                <div class="form-text">
+                                    {{ field.help_text }}
+                                </div>
+                            {% endif %}
+
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="icon-base ri ri-error-warning-line me-1"></i>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+
+                        </div>
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- FORM ACTIONS -->
+            <div class="card mb-4">
+                <div class="card-body">
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+
+                        <p class="mb-0 text-muted">
+                            Already have an account?
+                            <a href="{% url 'user_login' %}" class="text-primary fw-medium">
+                                Log in here
+                            </a>
+                        </p>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="icon-base ri ri-user-add-line me-1"></i>
+                            Create Account
+                        </button>
+
+                    </div>
+
+                </div>
+            </div>
+
+        </form>
+
+    </div>
+</div>
 
 {% endblock %}

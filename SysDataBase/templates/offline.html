@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>BankingSys - Offline</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 4px 12px #00000015;
+        }
+
+        h1 {
+            color: #15803d;
+        }
+
+        button {
+            background: #15803d;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>BankingSys</h1>
+        <h2>You are Offline</h2>
+
+        <p>
+            Please check your internet connection.
+            Banking transactions require a connection.
+        </p>
+
+        <button onclick="window.location.reload()">
+            Try Again
+        </button>
+    </div>
+</body>
+</html>
