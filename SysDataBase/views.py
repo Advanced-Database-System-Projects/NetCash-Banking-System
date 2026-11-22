@@ -1647,3 +1647,7 @@ def borrower_profile(request):
         "SysDataBase/borrower_profile.html",
         {"client": client}
     )
+
+@login_required
+def map_explorer(request):
+    return render(request, "SysDataBase/map.html")

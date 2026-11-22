@@ -102,5 +102,6 @@ urlpatterns = [
         "borrower/profile/",
         views.borrower_profile,
         name="borrower_profile"
-    ),
+    ), 
+    path("map/", views.map_explorer, name="map_explorer"),
 ]
