@@ -1,9 +1,12 @@
 
 {% load static %}
-<link rel="manifest"
-      href="{% static 'SysDataBase/manifest.json' %}">
+
+<link rel="manifest" href="{% static 'manifest.json' %}">
 
 <meta name="theme-color" content="#15803d">
+
+<link rel="apple-touch-icon"
+      href="{% static 'img/icons/icon-192.png' %}">
 
 <!DOCTYPE html>
 <html lang="en" class="layout-menu-fixed" data-bs-theme="light">
@@ -121,9 +124,9 @@
                         </a>
                     </li>
 
-                    <li class="menu-item {% if request.resolver_match.url_name == 'map_explorer' %}active{% endif %}">
+                    <li class="menu-item {% if request.resolver_match.url_name == 'map_explorer' %}{% endif %}">
                         <a href="{% url 'map_explorer' %}" class="menu-link">
-                            <i class="menu-icon icon-base bx bx-map"></i>
+                            <i class="menu-icon icon-base ri ri-map-pin-line"></i>
                             <div>Map</div>
                         </a>
                     </li>
