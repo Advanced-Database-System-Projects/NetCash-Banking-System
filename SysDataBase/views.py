@@ -1733,3 +1733,14 @@ def borrower_profile(request):
         "SysDataBase/borrower_profile.html",
         {"client": client}
     )
+
+def create_notification(user, notification_type, title, message):
+    Notifications.objects.create(
+        users=user,
+        notification_type=notification_type,
+        channel=Notifications.Channel.IN_APP,
+        status=Notifications.NotificationStatus.SENT,
+        title=title,
+        message=message,
+        sent_at=timezone.now()
+    )
