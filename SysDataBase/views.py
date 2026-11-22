@@ -44,6 +44,7 @@ from django.db.models import Sum
 from .payment_gateway import simulate_payment
 from .forms import BorrowerTransactionRequestForm
 from .models import LoanApplicationHistory
+from .notifications import notify_loan_decision
 
 def borrower_signup(request):
 
@@ -580,7 +581,9 @@ def loan_application_approve(request, application_id):
         application.reviewed_by = request.user
         application.reviewed_at = timezone.now()
         application.save()
-
+        
+    notify_loan_decision(application, approved=True, interest_rate=interest_rate)
+    
     messages.success(
         request,
         f"Loan approved with a recommended annual interest rate of {interest_rate}%."
@@ -608,6 +611,8 @@ def loan_application_reject(request, application_id):
     application.reviewed_by = request.user
     application.reviewed_at = timezone.now()
     application.save()
+    
+    notify_loan_decision(application, approved=False)
 
     messages.success(request, "Loan application rejected successfully.")
 
