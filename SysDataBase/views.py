@@ -44,6 +44,27 @@ from django.db.models import Sum
 from .payment_gateway import simulate_payment
 from .forms import BorrowerTransactionRequestForm
 from .models import LoanApplicationHistory
+from .models import (
+    Payment_gateway_record,
+    Transaction_records,
+)
+
+def record_loan_application_history(
+    application,
+    action,
+    performed_by=None,
+    previous_status="",
+    new_status="",
+    details=""
+):
+    LoanApplicationHistory.objects.create(
+        application=application,
+        performed_by=performed_by,
+        action=action,
+        previous_status=previous_status,
+        new_status=new_status,
+        details=details
+    )
 
 def borrower_signup(request):
 
@@ -350,7 +371,6 @@ def loan_application_list(request):
         }
     )
 
-
 @login_required
 def loan_application_create(request):
 
@@ -363,6 +383,28 @@ def loan_application_create(request):
         client = request.user.client_profile
     except Exception:
         return HttpResponseForbidden("No client profile found for this account.")
+
+    # Prevent another application while one is pending
+    has_pending_application = Loan_application.objects.filter(
+        client_profile=client,
+        status="Pending"
+    ).exists()
+
+    # Prevent another application while a loan is ongoing
+    has_ongoing_loan = Loans.objects.filter(
+        loan_application__client_profile=client,
+        status__in=["Approved", "Active", "Overdue"]
+    ).exists()
+
+    if has_pending_application or has_ongoing_loan:
+        messages.error(
+            request,
+            "You cannot apply for another loan while you have "
+            "a pending application or an ongoing loan. "
+            "Please wait until your current loan is fully paid "
+            "or your application is rejected."
+        )
+        return redirect("borrower_dashboard")
 
     if request.method == "POST":
         form = LoanApplicationForm(request.POST)
@@ -517,7 +559,6 @@ def loan_application_manual_review(request, application_id):
 
     return redirect("loan_application_detail", application_id=application.id)
 
-
 @login_required
 @require_POST
 def loan_application_approve(request, application_id):
@@ -573,13 +614,26 @@ def loan_application_approve(request, application_id):
             status="Approved"
         )
 
-        # Preserve automatic loan agreement PDF generation
+        # Generate loan agreement PDF
         generate_loan_agreement(application, loan)
 
         application.status = "Approved"
         application.reviewed_by = request.user
         application.reviewed_at = timezone.now()
         application.save()
+
+        # Notify borrower
+        create_notification(
+            user=application.client_profile.user,
+            notification_type=Notifications.NotificationType.LOAN_APPROVED,
+            title="Loan Application Approved",
+            message=(
+                f"Congratulations! Your loan application has been approved. "
+                f"Approved amount: ₱{application.amount_requested:,.2f}. "
+                f"Annual interest rate: {interest_rate}%. "
+                f"Loan term: {application.requested_term_months} months."
+            )
+        )
 
     messages.success(
         request,
@@ -608,6 +662,18 @@ def loan_application_reject(request, application_id):
     application.reviewed_by = request.user
     application.reviewed_at = timezone.now()
     application.save()
+
+    # Notify borrower
+    create_notification(
+        user=application.client_profile.user,
+        notification_type=Notifications.NotificationType.LOAN_REJECTED,
+        title="Loan Application Rejected",
+        message=(
+            "Your loan application has been rejected. "
+            "Please contact our loan department if you need "
+            "more information about the decision."
+        )
+    )
 
     messages.success(request, "Loan application rejected successfully.")
 
@@ -1477,11 +1543,11 @@ def check_savings_ledger(savings_transaction):
     return total_debit == total_credit
 
 
+
 @login_required
 @require_POST
 def borrower_transaction_request(request):
 
-    # Only borrowers can use this feature
     role = request.user.roles.roles_name if request.user.roles else None
 
     if role != "Borrower":
@@ -1498,10 +1564,7 @@ def borrower_transaction_request(request):
     )
 
     if account.status != Savings_account.AccountStatus.ACTIVE:
-        messages.error(
-            request,
-            "Your savings account is not active."
-        )
+        messages.error(request, "Your savings account is not active.")
         return redirect("borrower_dashboard")
 
     form = BorrowerTransactionRequestForm(request.POST)
@@ -1510,35 +1573,36 @@ def borrower_transaction_request(request):
         for errors in form.errors.values():
             for error in errors:
                 messages.error(request, error)
-
         return redirect("borrower_dashboard")
 
     transaction_type = form.cleaned_data["transaction_type"]
     amount = form.cleaned_data["amount"]
 
+    if transaction_type not in [
+        Savings_transaction.TransactionType.DEPOSIT,
+        Savings_transaction.TransactionType.WITHDRAWAL
+    ]:
+        messages.error(request, "Invalid transaction type.")
+        return redirect("borrower_dashboard")
+
     with transaction.atomic():
 
-        # Lock the savings account while processing
         account = Savings_account.objects.select_for_update().get(
-            id=account.id
+            pk=account.pk
         )
 
         if account.status != Savings_account.AccountStatus.ACTIVE:
             messages.error(request, "Your account is not active.")
             return redirect("borrower_dashboard")
 
-        # Check withdrawal balance before processing
+        # Check withdrawal balance
         if (
             transaction_type == Savings_transaction.TransactionType.WITHDRAWAL
             and amount > account.current_balance
         ):
-            messages.error(
-                request,
-                "Insufficient savings balance."
-            )
+            messages.error(request, "Insufficient savings balance.")
             return redirect("borrower_dashboard")
 
-        # Create a pending transaction
         savings_transaction = Savings_transaction.objects.create(
             savings_account=account,
             transaction_type=transaction_type,
@@ -1547,63 +1611,84 @@ def borrower_transaction_request(request):
             status=Savings_transaction.TransactionStatus.PENDING
         )
 
-        # Simulate deposit or withdrawal processing
-        gateway_result = simulate_payment(amount)
-
-        if gateway_result["status"] != "SUCCESS":
-            savings_transaction.status = (
-                Savings_transaction.TransactionStatus.FAILED
-            )
-            savings_transaction.save()
-
-            messages.error(
-                request,
-                "Transaction failed. Your balance was not changed."
-            )
-            return redirect("borrower_dashboard")
-
-        # Update balance only after successful simulated processing
+        # DEPOSIT: create pending payment and redirect to checkout
         if transaction_type == Savings_transaction.TransactionType.DEPOSIT:
-            account.current_balance += amount
-            entry_type = "Savings Deposit"
-            debit_account = "CASH"
-            credit_account = "SAVINGS_LIABILITY"
 
+            Payment_gateway_record.objects.create(
+                savings_transaction=savings_transaction,
+                amount=amount,
+                status=Payment_gateway_record.PaymentStatus.PENDING,
+                gateway_message="Awaiting simulated payment."
+            )
+
+            deposit_transaction_id = savings_transaction.pk
+
+        # WITHDRAWAL: process directly using the simulated gateway
         else:
-            account.current_balance -= amount
-            entry_type = "Savings Withdrawal"
-            debit_account = "SAVINGS_LIABILITY"
-            credit_account = "CASH"
 
-        account.save()
+            gateway_result = simulate_payment(amount)
 
-        # Mark transaction as approved
-        savings_transaction.status = (
-            Savings_transaction.TransactionStatus.APPROVED
+            savings_transaction.provider_reference = (
+                gateway_result.get("provider_reference")
+            )
+            savings_transaction.gateway_message = (
+                gateway_result.get("message", "")
+            )
+
+            if gateway_result.get("status") != "SUCCESS":
+
+                savings_transaction.status = (
+                    Savings_transaction.TransactionStatus.FAILED
+                )
+                savings_transaction.save()
+
+                withdrawal_failed = True
+
+            else:
+
+                account.current_balance -= amount
+                account.save(update_fields=["current_balance"])
+
+                savings_transaction.status = (
+                    Savings_transaction.TransactionStatus.APPROVED
+                )
+                savings_transaction.save()
+
+                # Balanced withdrawal ledger entries
+                Transaction_records.objects.create(
+                    savings_transaction=savings_transaction,
+                    debit_amount=amount,
+                    credit_amount=Decimal("0.00"),
+                    entry_type="Savings Withdrawal",
+                    account_code="SAVINGS_LIABILITY"
+                )
+
+                Transaction_records.objects.create(
+                    savings_transaction=savings_transaction,
+                    debit_amount=Decimal("0.00"),
+                    credit_amount=amount,
+                    entry_type="Savings Withdrawal",
+                    account_code="CASH"
+                )
+
+                withdrawal_failed = False
+
+    if transaction_type == Savings_transaction.TransactionType.DEPOSIT:
+        return redirect(
+            "borrower_payment_checkout",
+            transaction_id=deposit_transaction_id
         )
-        savings_transaction.save()
 
-        # Create balanced accounting entries
-        Transaction_records.objects.create(
-            savings_transaction=savings_transaction,
-            debit_amount=amount,
-            credit_amount=Decimal("0.00"),
-            entry_type=entry_type,
-            account_code=debit_account
+    if withdrawal_failed:
+        messages.error(
+            request,
+            "Withdrawal failed. Your savings balance was not changed."
         )
-
-        Transaction_records.objects.create(
-            savings_transaction=savings_transaction,
-            debit_amount=Decimal("0.00"),
-            credit_amount=amount,
-            entry_type=entry_type,
-            account_code=credit_account
+    else:
+        messages.success(
+            request,
+            "Withdrawal successfully processed!"
         )
-
-    messages.success(
-        request,
-        "Your transaction was successfully processed!"
-    )
 
     return redirect("borrower_dashboard")
 
@@ -1625,3 +1710,26 @@ def record_loan_application_history(
     )
 
 
+## PROFILE ##
+
+@login_required
+def borrower_profile(request):
+    role = request.user.roles.roles_name if request.user.roles else None
+
+    if role != "Borrower":
+        return HttpResponseForbidden(
+            "This profile page is for borrowers only."
+        )
+
+    try:
+        client = request.user.client_profile
+    except Client_profile.DoesNotExist:
+        return HttpResponseForbidden(
+            "No client profile found for this account."
+        )
+
+    return render(
+        request,
+        "SysDataBase/borrower_profile.html",
+        {"client": client}
+    )

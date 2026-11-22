@@ -211,6 +211,18 @@ class Savings_transaction(BaseModel):
         unique=True
     )
 
+    provider_reference = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
+    gateway_message = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2
@@ -441,6 +453,13 @@ class Amortization_schedule(BaseModel):
         default=ScheduleStatus.PENDING
     )
 
+    deduplication_key = models.CharField(
+        max_length=180,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -579,6 +598,7 @@ class Transaction_records(BaseModel):
 class Notifications(BaseModel):
 
     class Channel(models.TextChoices):
+        IN_APP = 'In-App', 'In-App'
         EMAIL = 'Email', 'Email'
         SMS = 'SMS', 'SMS'
 
@@ -587,15 +607,32 @@ class Notifications(BaseModel):
         SENT = 'Sent', 'Sent'
         FAILED = 'Failed', 'Failed'
 
+    class NotificationType(models.TextChoices):
+        LOAN_APPLICATION = 'Loan Application', 'Loan Application'
+        LOAN_APPROVED = 'Loan Approved', 'Loan Approved'
+        LOAN_REJECTED = 'Loan Rejected', 'Loan Rejected'
+        PAYMENT_REMINDER = 'Payment Reminder', 'Payment Reminder'
+        PAYMENT_DUE = 'Payment Due', 'Payment Due'
+        PAYMENT_OVERDUE = 'Payment Overdue', 'Payment Overdue'
+        PAYMENT_SUCCESS = 'Payment Success', 'Payment Success'
+        PAYMENT_FAILED = 'Payment Failed', 'Payment Failed'
+        SYSTEM_UPDATE = 'System Update', 'System Update'
+
     users = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name='notifications'
     )
 
+    notification_type = models.CharField(
+        max_length=30,
+        choices=NotificationType.choices
+    )
+
     channel = models.CharField(
         max_length=20,
-        choices=Channel.choices
+        choices=Channel.choices,
+        default=Channel.IN_APP
     )
 
     status = models.CharField(
@@ -604,12 +641,17 @@ class Notifications(BaseModel):
         default=NotificationStatus.PENDING
     )
 
+    title = models.CharField(max_length=150)
+
     message = models.TextField()
+
+    is_read = models.BooleanField(default=False)
 
     sent_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.channel} - {self.status}"
+        return f"{self.notification_type} - {self.users}"
+
 
 class LoanApplicationHistory(models.Model):
 
@@ -661,3 +703,49 @@ class LoanApplicationHistory(models.Model):
 
     def __str__(self):
         return f"{self.application} - {self.action}"
+
+class Payment_gateway_record(models.Model):
+
+    class PaymentStatus(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        SUCCESS = 'Success', 'Success'
+        FAILED = 'Failed', 'Failed'
+
+    savings_transaction = models.OneToOneField(
+        Savings_transaction,
+        on_delete=models.PROTECT,
+        related_name='payment_record'
+    )
+
+    provider_reference = models.CharField(
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING
+    )
+
+    gateway_message = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return f"Payment for {self.savings_transaction.reference_number}"

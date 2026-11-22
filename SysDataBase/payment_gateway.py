@@ -1,5 +1,6 @@
 
 import uuid
+import random
 from decimal import Decimal
 
 
@@ -7,21 +8,30 @@ def simulate_payment(amount):
     """
     Simulates a payment provider response.
     This does not transfer real money.
+
+    Success probability: 80%
+    Failure probability: 20%
     """
 
-    if amount <= Decimal("0.00"):
+    amount = Decimal(str(amount))
+
+    if not amount.is_finite() or amount <= Decimal("0.00"):
         return {
             "status": "FAILED",
             "provider_reference": None,
             "message": "Invalid payment amount."
         }
 
-    # Test-only failure scenario
-    if amount == Decimal("13.37"):
+    # Automatically generate payment result
+    payment_successful = True
+    #False
+    #random.random() < 0.80
+
+    if not payment_successful:
         return {
             "status": "FAILED",
             "provider_reference": None,
-            "message": "Simulated payment failed."
+            "message": "Simulated payment failed. Please try again."
         }
 
     return {

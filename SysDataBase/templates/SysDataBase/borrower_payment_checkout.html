@@ -1,0 +1,51 @@
+
+{% extends 'SysDataBase/base.html' %}
+
+{% block title %}Payment Checkout{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow-sm p-4">
+        <h2>Simulated Payment Checkout</h2>
+
+        <hr>
+
+        <p>
+            Transaction Reference:
+            <strong>{{ savings_transaction.reference_number }}</strong>
+        </p>
+
+        <p>
+            Amount to Pay:
+            <strong>₱{{ payment_record.amount|floatformat:2 }}</strong>
+        </p>
+
+        <p>
+            Payment Status:
+            <strong>{{ payment_record.status }}</strong>
+        </p>
+
+        {% if payment_record.status == "Pending" %}
+            <form method="POST"
+                  action="{% url 'borrower_payment_confirm' savings_transaction.id %}">
+                {% csrf_token %}
+
+                <button type="submit" class="btn btn-primary">
+                    Confirm Simulated Payment
+                </button>
+            </form>
+        {% else %}
+            <p class="alert alert-info mt-3">
+                This payment has already been processed.
+            </p>
+
+            <a href="{% url 'borrower_dashboard' %}"
+               class="btn btn-secondary">
+                Return to Dashboard
+            </a>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

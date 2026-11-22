@@ -98,4 +98,16 @@ urlpatterns = [
     "loans/applications/<int:application_id>/manual-review/",
     views.loan_application_manual_review,
     name="loan_application_manual_review"),
+<<<<<<< Updated upstream
+=======
+
+    path(
+    "borrower/transactions/<int:transaction_id>/checkout/",
+    views.borrower_payment_checkout,
+    name="borrower_payment_checkout"),
+    path(
+    "borrower/transactions/<int:transaction_id>/confirm/",
+    views.borrower_payment_confirm,
+    name="borrower_payment_confirm"),
+>>>>>>> Stashed changes
 ]
