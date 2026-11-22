@@ -121,7 +121,7 @@
                         </a>
                     </li>
 
-                    <li class="menu-item {% if request.resolver_match.url_name == 'map_explorer' %}active{% endif %}">
+                    <li class="menu-item {% if request.resolver_match.url_name == 'map_explorer' %}{% endif %}">
                         <a href="{% url 'map_explorer' %}" class="menu-link">
                             <i class="menu-icon icon-base ri ri-map-pin-line"></i>
                             <div>Map</div>
