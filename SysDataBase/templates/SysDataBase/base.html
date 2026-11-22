@@ -210,6 +210,18 @@
                         </a>
                     </li>
 
+
+                    {% if user.roles.roles_name == "Admin" %}
+                    <li class="menu-item {% if request.resolver_match.url_name == 'savings_transaction_review_list' %}active{% endif %}">
+                         <a href="{% url 'savings_transaction_review_list' %}"
+                          class="menu-link">
+                                <i class="menu-icon icon-base ri ri-checkbox-circle-line"></i>
+                                <div>Transaction Approvals</div>
+                            </a>
+                    </li>
+                    {% endif %}
+
+
                     <li class="menu-item {% if request.resolver_match.url_name == 'loan_payment_list' %}active{% endif %}">
                         <a href="{% url 'loan_payment_list' %}" class="menu-link">
                             <i class="menu-icon icon-base ri ri-bank-card-line"></i>
