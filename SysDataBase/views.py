@@ -1628,8 +1628,15 @@ def savings_transaction_review_list(request):
         if request.user.roles else None
     )
 
-    if not request.user.is_staff or role != "Admin":
-        return HttpResponseForbidden("Admins only.")
+    if not (
+            request.user.is_active
+            and request.user.is_staff
+            and (
+                   request.user.is_superuser
+                   or role == "Admin"
+            )
+        ):
+            return HttpResponseForbidden("Admins only.")
 
     requests = (
         Savings_transaction.objects
@@ -1657,7 +1664,14 @@ def savings_transaction_review(request, transaction_id):
         if request.user.roles else None
     )
 
-    if not request.user.is_staff or role != "Admin":
+    if not (
+        request.user.is_active
+        and request.user.is_staff
+        and (
+               request.user.is_superuser
+               or role == "Admin"
+        )
+    ):
         return HttpResponseForbidden("Admins only.")
 
     decision = request.POST.get("decision")
