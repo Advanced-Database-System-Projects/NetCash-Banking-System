@@ -47,8 +47,7 @@ from .models import LoanApplicationHistory
 
 def borrower_signup(request):
 
-    borrower_role = get_object_or_404(
-        Roles,
+    borrower_role, created = Roles.objects.get_or_create(
         roles_name="Borrower"
     )
 
