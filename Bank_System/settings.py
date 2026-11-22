@@ -25,7 +25,7 @@ import os
 SECRET_KEY = os.environ["SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG =  os.environ.get("DEBUG", "False").lower() == "true"
+DEBUG =  os.environ.get("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = ["127.0.0.1","localhost","bankingsys-zvlz.onrender.com",]
 
