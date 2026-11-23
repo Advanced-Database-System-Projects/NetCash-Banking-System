@@ -416,10 +416,8 @@
                             <td>
                                 {{ item.transaction_date|date:"M d, Y h:i A" }}
                             </td>
-                        </tr>
 
-
-                        <td>
+                            <td>
                             {% if item.status == "Pending" %}
                                 <span class="badge bg-warning">
                                     Pending Approval
@@ -437,8 +435,8 @@
                                     {{ item.status }}
                                 </span>
                             {% endif %}
-                        </td>
-
+                            </td>
+                        </tr>
 
                         {% empty %}
 
