@@ -1647,24 +1647,35 @@ def borrower_dashboard(request):
         context
     )
 
+
 @login_required
 def home_dashboard(request):
 
-    role = request.user.roles.roles_name if request.user.roles else None
+    role = (
+        request.user.roles.roles_name
+        if request.user.roles
+        else None
+    )
 
-    if role == "Borrower":
+    # Redirect regular borrowers to their dashboard.
+    if role == "Borrower" and not request.user.is_superuser:
         return redirect("borrower_dashboard")
 
-    if (
-        not request.user.is_staff
-        or role not in ["Admin", "Staff", "Loan Officer"]
+    # Allow staff with management roles and Django superusers.
+    if not (
+        request.user.is_active
+        and request.user.is_staff
+        and (
+            request.user.is_superuser
+            or role in ["Admin", "Staff", "Loan Officer"]
+        )
     ):
         return HttpResponseForbidden(
             "You are not authorized to access the Management Portal."
         )
 
     context = {
-        "role": role,
+        "role": "Admin" if request.user.is_superuser else role,
         "total_clients": Client_profile.objects.count(),
         "total_applications": Loan_application.objects.count(),
         "pending_applications": Loan_application.objects.filter(
@@ -1680,6 +1691,7 @@ def home_dashboard(request):
         "SysDataBase/home_dashboard.html",
         context
     )
+
 
 def check_savings_ledger(savings_transaction):
     totals = Transaction_records.objects.filter(
