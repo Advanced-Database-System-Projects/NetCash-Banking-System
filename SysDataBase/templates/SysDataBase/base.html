@@ -240,6 +240,13 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {% if request.resolver_match.url_name == 'financial_report' %}active{% endif %}">
+                        <a href="{% url 'financial_report' %}" class="menu-link">
+                            <i class="menu-icon icon-base ri ri-file-chart-line"></i>
+                            <div>Financial Reports</div>
+                        </a>
+                    </li>
+
                     <li class="menu-header small text-uppercase">
                         <span class="menu-header-text">System</span>
                     </li>

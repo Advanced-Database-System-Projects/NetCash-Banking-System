@@ -1,8 +1,10 @@
 
 from django.urls import path
 from . import views
+from . import financial_reports
 
 urlpatterns = [
+    path("financial/reports/", financial_reports.financial_report, name="financial_report"),
     path("", views.home_dashboard, name="home_dashboard"),
     path("clients/", views.client_list, name="client_list"),
     path("clients/add/", views.client_create, name="client_create"),
