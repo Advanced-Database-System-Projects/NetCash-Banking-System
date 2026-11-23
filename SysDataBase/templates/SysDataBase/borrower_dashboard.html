@@ -376,6 +376,7 @@
                             <th>Type</th>
                             <th>Amount</th>
                             <th>Date</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
 
@@ -417,10 +418,32 @@
                             </td>
                         </tr>
 
+
+                        <td>
+                            {% if item.status == "Pending" %}
+                                <span class="badge bg-warning">
+                                    Pending Approval
+                                </span>
+                            {% elif item.status == "Approved" %}
+                                <span class="badge bg-success">
+                                    Approved
+                                </span>
+                            {% elif item.status == "Rejected" %}
+                                <span class="badge bg-danger">
+                                    Declined
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    {{ item.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+
                         {% empty %}
 
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 No savings transactions available.
                             </td>
                         </tr>

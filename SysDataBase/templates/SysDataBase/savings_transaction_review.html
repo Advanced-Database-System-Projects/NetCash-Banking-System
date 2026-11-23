@@ -1,0 +1,80 @@
+
+{% extends "SysDataBase/base.html" %}
+
+{% block title %}Savings Transaction Approval{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <h4 class="mb-4">Pending Savings Transactions</h4>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Borrower</th>
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for txn in requests %}
+                    <tr>
+                        <td>
+                            {{ txn.savings_account.client_profile.first_name }}
+                            {{ txn.savings_account.client_profile.last_name }}
+                        </td>
+                        <td>{{ txn.reference_number }}</td>
+                        <td>{{ txn.transaction_type }}</td>
+                        <td>₱{{ txn.amount }}</td>
+                        <td>{{ txn.transaction_date|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="badge bg-warning">Pending</span>
+                        </td>
+                        <td>
+                            <form method="post"
+                                  action="{% url 'savings_transaction_review' txn.id %}"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden"
+                                       name="decision"
+                                       value="approve">
+                                <button class="btn btn-success btn-sm"
+                                        type="submit">
+                                    Approve
+                                </button>
+                            </form>
+
+                            <form method="post"
+                                  action="{% url 'savings_transaction_review' txn.id %}"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden"
+                                       name="decision"
+                                       value="reject">
+                                <button class="btn btn-danger btn-sm"
+                                        type="submit">
+                                    Decline
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            No pending transactions.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
