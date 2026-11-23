@@ -1164,53 +1164,137 @@ def generate_loan_agreement(application, loan):
 @login_required
 @require_POST
 def loan_disburse(request, loan_id):
-
-    if not request.user.is_staff or not request.user.roles or request.user.roles.roles_name not in ["Admin", "Loan Officer"]:
+    # LOAN DISBURSEMENT -> SAVINGS (single-credit atomic workflow)
+    # An approved loan is not money in the borrower's account yet.
+    # Credit savings only when staff explicitly disburses the loan.
+    if (
+        not request.user.is_staff
+        or not request.user.roles
+        or request.user.roles.roles_name not in ["Admin", "Loan Officer"]
+    ):
         return HttpResponseForbidden("You are not authorized to disburse loans.")
 
-    loan = get_object_or_404(Loans, id=loan_id)
-
-    if loan.status != Loans.LoanStatus.APPROVED:
-        messages.error(request, "Only approved loans can be disbursed.")
+    disbursement_date = parse_date(request.POST.get("disbursement_date", ""))
+    if not disbursement_date or disbursement_date > timezone.localdate():
+        messages.error(request, "Choose a valid disbursement date (not in the future).")
         return redirect("loan_list")
 
-    disbursement_date = parse_date(
-        request.POST.get("disbursement_date", "")
-    )
-
-    if not disbursement_date:
-        messages.error(request, "Please enter a valid disbursement date.")
-        return redirect("loan_list")
-
-    if disbursement_date > timezone.localdate():
-        messages.error(request, "The disbursement date cannot be in the future.")
-        return redirect("loan_list")
-
-    if Amortization_schedule.objects.filter(loans=loan).exists():
-        messages.error(request, "An amortization schedule already exists.")
-        return redirect("loan_list")
+    # Show a proper 404 for unknown loan IDs.
+    get_object_or_404(Loans, pk=loan_id)
 
     try:
         with transaction.atomic():
+            # First obtain a write lock even on SQLite, where select_for_update
+            # is ignored. Concurrent retries cannot both advance an Approved
+            # loan. This write and everything below are committed together.
+            claimed = Loans.objects.filter(
+                pk=loan_id,
+                status=Loans.LoanStatus.APPROVED,
+                disbursement_date__isnull=True,
+            ).update(updated_at=timezone.now())
+            if claimed != 1:
+                raise ValueError(
+                    "This loan has already been disbursed or is not approved."
+                )
+
+            loan = Loans.objects.select_for_update().select_related(
+                "loan_application__client_profile"
+            ).get(pk=loan_id)
+
+            if Amortization_schedule.objects.filter(loans=loan).exists():
+                raise ValueError(
+                    "An amortization schedule already exists. Please review this loan."
+                )
+
+            client = loan.loan_application.client_profile
+            try:
+                account = Savings_account.objects.select_for_update().get(
+                    client_profile=client
+                )
+            except Savings_account.DoesNotExist:
+                raise ValueError("The borrower has no savings account.")
+
+            if account.status != Savings_account.AccountStatus.ACTIVE:
+                raise ValueError(
+                    "Activate the borrower's savings account before disbursement."
+                )
+
+            amount = loan.principal_amount
+            if amount is None or amount <= Decimal("0.00"):
+                raise ValueError("Loan principal must be greater than zero.")
+
+            # Stable unique reference acts as an additional safeguard. Avoid
+            # creating a second deposit for the same loan ID.
+            reference = f"LOANDISB-{loan.pk}"
+            if Savings_transaction.objects.filter(
+                reference_number=reference
+            ).exists():
+                raise ValueError(
+                    "A savings credit already exists for this loan."
+                )
+
+            # Represent loan proceeds as a Deposit in the existing transaction
+            # model (no schema change required); the unique reference and ledger
+            # entry_type distinguish it from a normal cash deposit.
+            savings_transaction = Savings_transaction.objects.create(
+                savings_account=account,
+                transaction_type=Savings_transaction.TransactionType.DEPOSIT,
+                reference_number=reference,
+                amount=amount,
+                status=Savings_transaction.TransactionStatus.APPROVED,
+            )
+
+            account.current_balance += amount
+            account.save(update_fields=["current_balance", "updated_at"])
+
+            # Internal credit: loan receivable increases (debit); the bank's
+            # liability for the credited savings balance increases (credit).
+            Transaction_records.objects.create(
+                savings_transaction=savings_transaction,
+                debit_amount=amount,
+                credit_amount=Decimal("0.00"),
+                entry_type="Loan Disbursement",
+                account_code="LOAN_RECEIVABLE",
+            )
+            Transaction_records.objects.create(
+                savings_transaction=savings_transaction,
+                debit_amount=Decimal("0.00"),
+                credit_amount=amount,
+                entry_type="Loan Disbursement",
+                account_code="SAVINGS_LIABILITY",
+            )
 
             loan.disbursement_date = disbursement_date
             loan.status = Loans.LoanStatus.ACTIVE
-            loan.save()
+            loan.save(update_fields=["disbursement_date", "status", "updated_at"])
 
+            # Any failure while making the schedule rolls back the balance,
+            # savings transaction, ledger and loan status together.
             generate_amortization_schedule(loan)
 
         messages.success(
             request,
-            "Loan successfully disbursed and amortization schedule generated."
+            f"Loan disbursed! PHP {amount:,.2f} credited to the borrower's "
+            f"savings account. Reference: {reference}"
         )
-
-    except (ValueError, ArithmeticError):
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    except (ArithmeticError, InvalidOperation):
+        messages.error(request, "Invalid loan details; disbursement was canceled.")
+    except Exception:
+        # A DB constraint error or another unexpected failure rolls back the
+        # atomic transaction. The traceback is preserved in the server logs.
+        import logging
+        logging.getLogger(__name__).exception(
+            "Loan disbursement failed for loan %s", loan_id
+        )
         messages.error(
             request,
-            "Unable to generate the amortization schedule. Please check the loan details."
+            "Disbursement failed; no loan credit was applied. Check server logs."
         )
 
     return redirect("loan_list")
+
 
 
 
