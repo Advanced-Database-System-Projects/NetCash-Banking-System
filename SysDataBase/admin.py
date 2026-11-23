@@ -5,13 +5,16 @@ from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from .models import *
 
+from .savings_service import (
+    review_savings_transaction,
+    SavingsReviewError,
+)
+
 from .models import (
     Savings_transaction,
     Savings_account,
     Transaction_records,
 )
-from .notifications import notify
-from decimal import Decimal
 
 # Regular model registrations
 admin.site.register(Roles)
@@ -307,109 +310,47 @@ class SavingsTransactionAdmin(admin.ModelAdmin):
             request, obj
         )
 
+    
     def save_model(self, request, obj, form, change):
         if not change:
-            raise PermissionDenied("Creation is not allowed here.")
-
-        with transaction.atomic():
-
-            old = Savings_transaction.objects.select_for_update().get(
-                pk=obj.pk
+            raise PermissionDenied(
+                "Transactions cannot be created here."
             )
 
-            if old.status != Savings_transaction.TransactionStatus.PENDING:
-                if obj.status != old.status:
-                    raise PermissionDenied(
-                        "Transaction has already been reviewed."
-                    )
-                return
+        old = Savings_transaction.objects.get(pk=obj.pk)
 
-            if obj.status == Savings_transaction.TransactionStatus.PENDING:
-                return
+        # Already reviewed transactions cannot be processed again.
+        if old.status != Savings_transaction.TransactionStatus.PENDING:
+            if obj.status != old.status:
+                raise PermissionDenied(
+                    "This transaction has already been reviewed."
+                )
+            return
 
-            account = Savings_account.objects.select_for_update().get(
-                pk=old.savings_account_id
+        # Nothing to process if status remains Pending.
+        if obj.status == Savings_transaction.TransactionStatus.PENDING:
+            return
+
+        if obj.status == Savings_transaction.TransactionStatus.APPROVED:
+            decision = "approve"
+
+        elif obj.status == Savings_transaction.TransactionStatus.REJECTED:
+            decision = "reject"
+
+        else:
+            raise PermissionDenied(
+                "Invalid transaction status."
             )
 
-            if obj.status == Savings_transaction.TransactionStatus.APPROVED:
-
-                if account.status != Savings_account.AccountStatus.ACTIVE:
-                    raise PermissionDenied("Savings account is not active.")
-
-                if old.amount <= 0:
-                    raise PermissionDenied("Invalid transaction amount.")
-
-                if Transaction_records.objects.filter(
-                    savings_transaction=old
-                ).exists():
-                    raise PermissionDenied(
-                        "Existing ledger entries require investigation."
-                    )
-
-                if old.transaction_type == Savings_transaction.TransactionType.DEPOSIT:
-                    account.current_balance += old.amount
-
-                    debit_code = "CASH"
-                    credit_code = "SAVINGS_LIABILITY"
-                    entry_type = "Savings Deposit"
-
-                elif old.transaction_type == Savings_transaction.TransactionType.WITHDRAWAL:
-                    if old.amount > account.current_balance:
-                        raise PermissionDenied("Insufficient balance.")
-
-                    account.current_balance -= old.amount
-
-                    debit_code = "SAVINGS_LIABILITY"
-                    credit_code = "CASH"
-                    entry_type = "Savings Withdrawal"
-
-                else:
-                    raise PermissionDenied("Unsupported transaction type.")
-
-                account.save(
-                    update_fields=["current_balance", "updated_at"]
-                )
-
-                Transaction_records.objects.create(
-                    savings_transaction=old,
-                    debit_amount=old.amount,
-                    credit_amount=Decimal("0.00"),
-                    entry_type=entry_type,
-                    account_code=debit_code,
-                )
-
-                Transaction_records.objects.create(
-                    savings_transaction=old,
-                    debit_amount=Decimal("0.00"),
-                    credit_amount=old.amount,
-                    entry_type=entry_type,
-                    account_code=credit_code,
-                )
-
-            elif obj.status != Savings_transaction.TransactionStatus.REJECTED:
-                raise PermissionDenied("Invalid transaction decision.")
-
-            old.status = obj.status
-            old.save(update_fields=["status", "updated_at"])
-
-            borrower = account.client_profile.users
-            txn_type = old.transaction_type
-            amount = old.amount
-            reference = old.reference_number
-            decision_status = old.status
-
-            def send_notification():
-                notify(
-                    borrower,
-                    (
-                        f"Your {txn_type.lower()} request of "
-                        f"PHP {amount:,.2f} ({reference}) "
-                        f"has been {decision_status.lower()}."
-                    ),
-                    subject=f"Savings Transaction {decision_status}",
-                )
-
-            transaction.on_commit(
-                send_notification,
-                robust=True
+        try:
+            review_savings_transaction(
+                transaction_id=obj.pk,
+                decision=decision
             )
+
+        except SavingsReviewError as exc:
+            raise PermissionDenied(str(exc))
+
+        # Refresh the object after the service updates the database.
+        obj.refresh_from_db()
+

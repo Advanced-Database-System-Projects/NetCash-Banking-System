@@ -52,6 +52,10 @@ from .loan_approval_service import (
     approve_loan_application,
     LoanApprovalError,
 )
+from .savings_service import (
+    review_savings_transaction,
+    SavingsReviewError,
+)
 
 def borrower_signup(request):
 
@@ -1882,135 +1886,49 @@ def savings_transaction_review_list(request):
     )
 
 
+
 @login_required
 @require_POST
 def savings_transaction_review(request, transaction_id):
+
     role = (
         request.user.roles.roles_name
         if request.user.roles else None
     )
 
+    # Only authorized Admin accounts can review transactions.
     if not (
         request.user.is_active
         and request.user.is_staff
         and (
-               request.user.is_superuser
-               or role == "Admin"
+            request.user.is_superuser
+            or role == "Admin"
         )
     ):
         return HttpResponseForbidden("Admins only.")
 
     decision = request.POST.get("decision")
 
-    if decision not in ["approve", "reject"]:
-        messages.error(request, "Invalid review decision.")
-        return redirect("savings_transaction_review_list")
-
-    with transaction.atomic():
-        txn = get_object_or_404(
-            Savings_transaction.objects.select_for_update(),
-            pk=transaction_id
+    try:
+        txn = review_savings_transaction(
+            transaction_id=transaction_id,
+            decision=decision
         )
 
-        # Prevent duplicate approval or rejection.
-        if txn.status != Savings_transaction.TransactionStatus.PENDING:
-            messages.error(request, "Transaction already reviewed.")
-            return redirect("savings_transaction_review_list")
-
-        account = Savings_account.objects.select_for_update().get(
-            pk=txn.savings_account_id
+    except Savings_transaction.DoesNotExist:
+        messages.error(
+            request,
+            "Savings transaction not found."
         )
 
-        if decision == "approve":
-            if account.status != Savings_account.AccountStatus.ACTIVE:
-                messages.error(request, "Savings account is not active.")
-                return redirect("savings_transaction_review_list")
+    except SavingsReviewError as exc:
+        messages.error(request, str(exc))
 
-            if txn.transaction_type == Savings_transaction.TransactionType.DEPOSIT:
-                account.current_balance += txn.amount
-
-                debit_code = "CASH"
-                credit_code = "SAVINGS_LIABILITY"
-                entry_type = "Savings Deposit"
-
-            elif txn.transaction_type == Savings_transaction.TransactionType.WITHDRAWAL:
-                if txn.amount > account.current_balance:
-                    messages.error(
-                        request,
-                        "Insufficient balance. Cannot approve withdrawal."
-                    )
-                    return redirect("savings_transaction_review_list")
-
-                account.current_balance -= txn.amount
-
-                debit_code = "SAVINGS_LIABILITY"
-                credit_code = "CASH"
-                entry_type = "Savings Withdrawal"
-
-            else:
-                messages.error(request, "Invalid transaction type.")
-                return redirect("savings_transaction_review_list")
-
-            # Prevent processing records with existing ledger entries.
-            if Transaction_records.objects.filter(
-                savings_transaction=txn
-            ).exists():
-                messages.error(
-                    request,
-                    "This transaction already has ledger entries."
-                )
-                return redirect("savings_transaction_review_list")
-
-            account.save(update_fields=["current_balance", "updated_at"])
-
-            Transaction_records.objects.create(
-                savings_transaction=txn,
-                debit_amount=txn.amount,
-                credit_amount=Decimal("0.00"),
-                entry_type=entry_type,
-                account_code=debit_code
-            )
-
-            Transaction_records.objects.create(
-                savings_transaction=txn,
-                debit_amount=Decimal("0.00"),
-                credit_amount=txn.amount,
-                entry_type=entry_type,
-                account_code=credit_code
-            )
-
-            txn.status = Savings_transaction.TransactionStatus.APPROVED
-
-        else:
-            txn.status = Savings_transaction.TransactionStatus.REJECTED
-
-        txn.save(update_fields=["status", "updated_at"])
-
-        borrower = account.client_profile.users
-        amount = txn.amount
-        txn_type = txn.transaction_type
-        reference = txn.reference_number
-        decision_status = txn.status
-
-        # Notify only after the database transaction commits.
-        from .notifications import notify
-
-        def send_decision_notification():
-            notify(
-                borrower,
-                (
-                    f"Your {txn_type.lower()} request of "
-                    f"PHP {amount:,.2f} ({reference}) "
-                    f"has been {decision_status.lower()}."
-                ),
-                subject=f"Savings Transaction {decision_status}"
-            )
-
-        transaction.on_commit(send_decision_notification)
-
-    messages.success(
-        request,
-        f"Transaction {decision_status.lower()} successfully."
-    )
+    else:
+        messages.success(
+            request,
+            f"Transaction {txn.status.lower()} successfully."
+        )
 
     return redirect("savings_transaction_review_list")
+
