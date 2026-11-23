@@ -1,7 +1,7 @@
 
 {
-  "name": "BankingSys",
-  "short_name": "BankingSys",
+  "name": "NetCash",
+  "short_name": "NetCash",
   "description": "Banking and Loan Management System",
   "id": "/",
   "start_url": "/login/",

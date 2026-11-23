@@ -164,7 +164,7 @@ def _pdf(data):
         topMargin=15 * mm, bottomMargin=15 * mm,
     )
     styles = getSampleStyleSheet()
-    story = [Paragraph("BankingSys Financial Report", styles["Title"])]
+    story = [Paragraph("NetCash Financial Report", styles["Title"])]
     story.append(Paragraph(
         f"Reporting period: {data['start']:%b %d, %Y} to {data['end']:%b %d, %Y}",
         styles["Normal"],
@@ -269,7 +269,7 @@ def financial_report(request):
     if request.GET.get("download") == "pdf":
         response = HttpResponse(_pdf(data), content_type="application/pdf")
         response["Content-Disposition"] = (
-            f'attachment; filename="BankingSys_Financial_Report_{data["start"]}_{data["end"]}.pdf"'
+            f'attachment; filename="NetCash_Financial_Report_{data["start"]}_{data["end"]}.pdf"'
         )
         response["Cache-Control"] = "private, no-store"
         return response

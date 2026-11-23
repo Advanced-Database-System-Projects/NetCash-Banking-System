@@ -18,7 +18,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>{% block title %}Banking System{% endblock %}</title>
+    <title>{% block title %}NetCash{% endblock %}</title>
 
     <!-- Materio Fonts and Icons -->
     <link rel="stylesheet" href="{% static 'vendor/fonts/iconify-icons.css' %}">
@@ -53,7 +53,7 @@
                 <div class="app-brand demo">
                     <a href="{% url 'borrower_dashboard' %}" class="app-brand-link">
                         <span class="app-brand-text demo menu-text fw-bold">
-                            My Banking
+                            NetCash
                         </span>
                     </a>
 
@@ -146,7 +146,7 @@
                 <div class="app-brand demo">
                     <a href="{% url 'home_dashboard' %}" class="app-brand-link">
                         <span class="app-brand-text demo menu-text fw-bold">
-                            BankingSys
+                            NetCash
                         </span>
                     </a>
 
@@ -395,7 +395,7 @@
             navigator.serviceWorker
                 .register("/service-worker.js")
                 .then(function () {
-                    console.log("BankingSys PWA registered");
+                    console.log("NetCash PWA registered");
                 })
                 .catch(function (error) {
                     console.error(

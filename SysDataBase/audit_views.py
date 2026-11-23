@@ -77,7 +77,7 @@ def audit_log_export(request):
         return HttpResponseBadRequest("Invalid date range; enter valid YYYY-MM-DD dates.")
     response = HttpResponse(content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = (
-        f'attachment; filename="BankingSys_Audit_Logs_{timezone.localdate():%Y%m%d}.csv"'
+        f'attachment; filename="NetCash_Audit_Logs_{timezone.localdate():%Y%m%d}.csv"'
     )
     writer = csv.writer(response)
     writer.writerow(["Log ID", "Timestamp", "Username", "Action", "Entity", "Entity ID"])

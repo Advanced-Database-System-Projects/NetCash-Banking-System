@@ -4,7 +4,7 @@ from django.utils import timezone
 from .models import Notifications
 
 
-def notify(user, message, subject="Banking System Notification", dedupe=False):
+def notify(user, message, subject="NetCash Notification", dedupe=False):
     """Save a notification, try to email it, and record Sent/Failed.
 
     dedupe=True skips it if this exact message was already sent to the user.
