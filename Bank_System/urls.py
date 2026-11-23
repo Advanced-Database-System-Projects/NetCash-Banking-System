@@ -23,6 +23,7 @@ from django.urls import path, include
 from SysDataBase import views
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
+from rest_framework_simplejwt.views import ( TokenObtainPairView, TokenRefreshView, )
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -34,6 +35,8 @@ urlpatterns = [
     name="offline"),
     path("service-worker.js",
     TemplateView.as_view(template_name="service-worker.js",content_type="application/javascript"),
-    name="service_worker"),
-
+    name="service_worker"), path('api/token/', TokenObtainPairView.as_view(), name='api_token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/', include('SysDataBase.api_urls')),
 ]
