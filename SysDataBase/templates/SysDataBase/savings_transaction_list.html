@@ -1,72 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Savings Transaction History | NetCash</title>
-</head>
-<body>
+{% extends "SysDataBase/base.html" %}
+{% load static %}
+{% block title %}Savings Transactions | NetCash{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/netcash_savings.css' %}?v=1">{% endblock %}
+{% block content %}
+<div class="nc-page">
+  <div class="nc-heading">
+    <div>
+      <div class="nc-kicker"><i class="icon-base ri ri-exchange-dollar-line me-1"></i> Financial Management</div>
+      <h4 class="nc-title">Savings Transactions</h4>
+      <p class="nc-description">Review deposit, withdrawal, and savings-interest activity.</p>
+    </div>
+    <div class="nc-actions">
+      <a class="btn btn-outline-primary" href="{% url 'savings_account_list' %}"><i class="icon-base ri ri-wallet-3-line me-1"></i>Savings Accounts</a>
+    </div>
+  </div>
 
-    <h1>Savings Transaction History</h1>
-    <p>View and monitor all savings deposits and withdrawals.</p>
-    <form method="GET" class="row mb-3">
-        <div class="col-md-6">
-            <input
-                type="text"
-                name="search"
-                class="form-control"
-                placeholder="Search reference, account, or borrower..."
-                value="{{ search_query }}"
-            >
+  <div class="nc-card mb-4">
+    <div class="nc-card-body">
+      <form class="nc-filter" method="get" action="{% url 'savings_transaction_list' %}">
+        <div class="nc-field">
+          <label class="nc-form-label" for="transaction-search">Search transactions</label>
+          <input id="transaction-search" class="nc-input" type="search" name="search" value="{{ search_query }}" placeholder="Reference, account, or client">
         </div>
-        
-        <div class="col-md-3">
-            <select name="type" class="form-control">
-                <option value="">All Transaction Types</option>
-                <option value="Deposit" {% if transaction_type == "Deposit" %}selected{% endif %}>Deposit</option>
-                <option value="Withdrawal" {% if transaction_type == "Withdrawal" %}selected{% endif %}>Withdrawal</option>
-                <option value="Interest" {% if transaction_type == "Interest" %}selected{% endif %}>Interest</option>
-            </select>
+        <div class="nc-field nc-field--type">
+          <label class="nc-form-label" for="transaction-type">Transaction type</label>
+          <select id="transaction-type" name="type" class="nc-input">
+            <option value="">All transactions</option>
+            <option value="Deposit" {% if selected_type == 'Deposit' %}selected{% endif %}>Deposit</option>
+            <option value="Withdrawal" {% if selected_type == 'Withdrawal' %}selected{% endif %}>Withdrawal</option>
+            <option value="Interest" {% if selected_type == 'Interest' %}selected{% endif %}>Interest</option>
+          </select>
         </div>
+        <div class="nc-field--buttons nc-actions">
+          <button class="btn btn-primary" type="submit"><i class="icon-base ri ri-search-line me-1"></i>Filter</button>
+          <a class="btn btn-outline-secondary" href="{% url 'savings_transaction_list' %}">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
 
-        <div class="col-md-3">
-            <button type="submit" class="btn btn-primary">Search</button>
-            <a href="{% url 'savings_transaction_list' %}" class="btn btn-secondary">Reset</a>
-        </div>
-    </form>
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Reference Number</th>
-                <th>Account Number</th>
-                <th>Client</th>
-                <th>Transaction Type</th>
-                <th>Amount</th>
-                <th>Transaction Date</th>
-            </tr>
-        </thead>
-
+  <div class="nc-card">
+    <div class="nc-card-title"><h5>Transaction History</h5><span class="nc-muted">Latest transactions first</span></div>
+    <div class="table-responsive">
+      <table class="table nc-table">
+        <thead><tr><th>Reference</th><th>Account</th><th>Client</th><th>Type</th><th class="text-end">Amount</th><th>Date</th><th>Status</th></tr></thead>
         <tbody>
-            {% for item in transactions %}
+          {% for item in transactions %}
             <tr>
-                <td>{{ item.reference_number }}</td>
-                <td>{{ item.savings_account.account_no }}</td>
-                <td>{{ item.savings_account.client_profile }}</td>
-                <td>{{ item.transaction_type }}</td>
-                <td>{{ item.amount }}</td>
-                <td>{{ item.transaction_date|date:"M d, Y h:i A" }}</td>
+              <td><span class="nc-ref">{{ item.reference_number }}</span></td>
+              <td><span class="text-nowrap">{{ item.savings_account.account_no }}</span></td>
+              <td>{{ item.savings_account.client_profile }}</td>
+              <td>
+                {% if item.transaction_type == 'Deposit' %}<span class="nc-pill nc-positive">Deposit</span>
+                {% elif item.transaction_type == 'Withdrawal' %}<span class="nc-pill nc-negative">Withdrawal</span>
+                {% else %}<span class="nc-pill nc-neutral">{{ item.transaction_type }}</span>{% endif %}
+              </td>
+              <td class="text-end fw-semibold text-nowrap">₱{{ item.amount|floatformat:2 }}</td>
+              <td class="text-nowrap">{{ item.transaction_date|date:"M d, Y h:i A" }}</td>
+              <td>
+                {% if item.status == 'Approved' %}<span class="nc-pill nc-positive">Approved</span>
+                {% elif item.status == 'Pending' %}<span class="nc-pill nc-warning">Pending</span>
+                {% elif item.status == 'Rejected' or item.status == 'Failed' %}<span class="nc-pill nc-danger">{{ item.status }}</span>
+                {% else %}<span class="nc-pill nc-neutral">{{ item.status|default:'—' }}</span>{% endif %}
+              </td>
             </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6">No savings transactions found.</td>
-            </tr>
-            {% endfor %}
+          {% empty %}
+            <tr><td colspan="7"><div class="nc-empty"><i class="icon-base ri ri-file-search-line"></i>No savings transactions found.</div></td></tr>
+          {% endfor %}
         </tbody>
-    </table>
-
-    <br>
-
-    <a href="{% url 'savings_account_list' %}">Back to Savings Accounts</a>
-
-</body>
-</html>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

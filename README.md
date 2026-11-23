@@ -1,3 +1,4 @@
+# NetCash
 
 
 
@@ -16,7 +17,7 @@ The system helps manage borrower information, savings accounts, loan application
 ---
 
 <p align="center">
-  <strong>A Web-Based Banking Management System</strong><br>
+  <strong>NetCash: A Web-Based Banking Management System</strong><br>
   Built with Django · Python · SQLite · Bootstrap
 </p>
 
@@ -74,4 +75,4 @@ The system helps manage borrower information, savings accounts, loan application
 
 
 
-
+>>>>>>> coj
