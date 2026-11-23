@@ -9,7 +9,11 @@
       href="{% static 'img/icons/icon-192.png' %}">
 
 <!DOCTYPE html>
-<html lang="en" class="layout-menu-fixed" data-bs-theme="light">
+
+<html lang="en"
+      class="{% if user.is_authenticated %}layout-menu-fixed{% else %}layout-without-menu{% endif %}"
+      data-bs-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
