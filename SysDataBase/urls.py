@@ -2,8 +2,11 @@
 from django.urls import path
 from . import views
 from . import financial_reports
+from . import audit_views
 
 urlpatterns = [
+    path("system/audit/", audit_views.audit_log_list, name="audit_log_list"),
+    path("system/audit/export/", audit_views.audit_log_export, name="audit_log_export"),
     path("financial/reports/", financial_reports.financial_report, name="financial_report"),
     path("", views.home_dashboard, name="home_dashboard"),
     path("clients/", views.client_list, name="client_list"),

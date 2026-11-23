@@ -251,6 +251,15 @@
                         <span class="menu-header-text">System</span>
                     </li>
 
+                    {% if user.is_staff and user.roles.roles_name == "Admin" or user.is_superuser %}
+                    <li class="menu-item {% if request.resolver_match.url_name == 'audit_log_list' %}active{% endif %}">
+                        <a href="{% url 'audit_log_list' %}" class="menu-link">
+                            <i class="menu-icon icon-base ri ri-shield-check-line"></i>
+                            <div>Audit Logs</div>
+                        </a>
+                    </li>
+                    {% endif %}
+
                     <li class="menu-item {% if request.resolver_match.url_name == 'notification_list' %}active{% endif %}">
                         <a href="{% url 'notification_list' %}" class="menu-link">
                             <i class="menu-icon icon-base ri ri-notification-3-line"></i>

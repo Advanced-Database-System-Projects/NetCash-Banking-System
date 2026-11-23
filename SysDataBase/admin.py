@@ -16,7 +16,27 @@ from decimal import Decimal
 # Regular model registrations
 admin.site.register(Roles)
 admin.site.register(User)
-admin.site.register(Audit_logs)
+@admin.register(Audit_logs)
+class AuditLogReadOnlyAdmin(admin.ModelAdmin):
+    list_display = ("action_timestamp", "users", "action", "entity_name", "entity_id")
+    list_filter = ("action", "entity_name", "action_timestamp")
+    search_fields = ("users__username", "action", "entity_name", "entity_id")
+    ordering = ("-action_timestamp",)
+
+    def has_view_permission(self, request, obj=None):
+        user = request.user
+        role = user.roles.roles_name if user.is_authenticated and user.roles_id else None
+        return user.is_authenticated and user.is_staff and (user.is_superuser or role == "Admin")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 admin.site.register(Savings_account)
 admin.site.register(Loan_application)
 admin.site.register(Loan_agreement)
