@@ -1,13 +1,6 @@
 
 {% load static %}
 
-<link rel="manifest" href="{% static 'manifest.json' %}">
-
-<meta name="theme-color" content="#15803d">
-
-<link rel="apple-touch-icon"
-      href="{% static 'img/icons/icon-192.png' %}">
-
 <!DOCTYPE html>
 
 <html lang="en"
@@ -15,6 +8,13 @@
       data-bs-theme="light">
 
 <head>
+    <!-- NetCash branding and progressive web app icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/brand/netcash-icon-32.png' %}?v=netcash1">
+    <link rel="shortcut icon" href="{% static 'img/favicon/favicon.ico' %}?v=netcash1">
+    <link rel="apple-touch-icon" href="{% static 'img/brand/netcash-icon-180.png' %}?v=netcash1">
+    <link rel="manifest" href="{% static 'manifest.json' %}?v=netcash1">
+    <meta name="theme-color" content="#15803d">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -52,9 +52,11 @@
 
                 <div class="app-brand demo">
                     <a href="{% url 'borrower_dashboard' %}" class="app-brand-link">
-                        <span class="app-brand-text demo menu-text fw-bold">
-                            NetCash
-                        </span>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-sidebar-logo me-2"
+                             width="42" height="42">
+                        <span class="app-brand-text demo menu-text fw-bold">NetCash</span>
                     </a>
 
                     <a href="javascript:void(0);"
@@ -145,9 +147,11 @@
 
                 <div class="app-brand demo">
                     <a href="{% url 'home_dashboard' %}" class="app-brand-link">
-                        <span class="app-brand-text demo menu-text fw-bold">
-                            NetCash
-                        </span>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-sidebar-logo me-2"
+                             width="42" height="42">
+                        <span class="app-brand-text demo menu-text fw-bold">NetCash</span>
                     </a>
 
                     <a href="javascript:void(0);"

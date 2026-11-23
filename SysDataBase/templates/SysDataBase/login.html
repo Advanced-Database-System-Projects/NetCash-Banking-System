@@ -1,5 +1,6 @@
 
 {% extends "SysDataBase/base.html" %}
+{% load static %}
 
 {% block title %}Login | NetCash{% endblock %}
 
@@ -22,8 +23,10 @@
                 <div class="text-center mb-4">
 
                     <div class="mb-3">
-                        <i class="icon-base ri ri-bank-line text-primary"
-                           style="font-size: 3rem;"></i>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-auth-logo"
+                             width="76" height="76">
                     </div>
 
                     <h4 class="fw-bold mb-1">Welcome to NetCash</h4>

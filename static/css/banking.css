@@ -208,3 +208,14 @@
         padding: 20px;
     }
 }
+
+/* NetCash logo branding */
+.netcash-sidebar-logo {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+.app-brand .app-brand-link {display: inline-flex; align-items: center; min-width: 0;}
+.netcash-auth-logo {display: inline-block; width: 76px; height: 76px; object-fit: contain;}
