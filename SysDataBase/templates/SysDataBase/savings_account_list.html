@@ -1,60 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Savings Accounts | NetCash</title>
-</head>
-<body>
+{% extends "SysDataBase/base.html" %}
+{% load static %}
+{% block title %}Savings Accounts | NetCash{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/netcash_savings.css' %}?v=1">{% endblock %}
+{% block content %}
+<div class="nc-page">
+  <div class="nc-heading">
+    <div>
+      <div class="nc-kicker"><i class="icon-base ri ri-wallet-3-line me-1"></i> Financial Management</div>
+      <h4 class="nc-title">Savings Accounts</h4>
+      <p class="nc-description">Manage client savings accounts, balances, and transactions.</p>
+    </div>
+    <div class="nc-actions">
+      <a class="btn btn-outline-primary" href="{% url 'savings_transaction_list' %}"><i class="icon-base ri ri-history-line me-1"></i>Transaction History</a>
+      <a class="btn btn-primary" href="{% url 'savings_account_create' %}"><i class="icon-base ri ri-add-line me-1"></i>Open Savings Account</a>
+    </div>
+  </div>
 
-    <h1>Savings Accounts</h1>
-    <p>Manage and monitor client savings accounts.</p>
+  <div class="nc-card mb-4">
+    <div class="nc-card-body">
+      <form method="get" action="{% url 'savings_account_list' %}" class="nc-filter">
+        <div class="nc-field">
+          <label class="nc-form-label" for="account-search">Find an account</label>
+          <input id="account-search" class="nc-input" type="search" name="search" value="{{ search_query }}" placeholder="Account number, client, or username">
+        </div>
+        <div class="nc-field--buttons nc-actions">
+          <button type="submit" class="btn btn-primary"><i class="icon-base ri ri-search-line me-1"></i>Search</button>
+          <a href="{% url 'savings_account_list' %}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
 
-    <a href="{% url 'savings_account_create' %}">
-        <button type="button">Open New Savings Account</button>
-    </a>
-
-    <a href="{% url 'savings_transaction_list' %}">
-        <button type="button">View Transaction History</button>
-    </a>
-
-    <br><br>
-
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Account Number</th>
-                <th>Client</th>
-                <th>Current Balance</th>
-                <th>Interest Rate</th>
-                <th>Status</th>
-                <th>Date Opened</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-
+  <div class="nc-card">
+    <div class="nc-card-title"><h5>Account Records</h5><span class="nc-muted">Current savings accounts</span></div>
+    <div class="table-responsive">
+      <table class="table nc-table">
+        <thead><tr><th>Account Number</th><th>Client</th><th class="text-end">Balance</th><th>Interest Rate</th><th>Status</th><th>Opened</th><th>Action</th></tr></thead>
         <tbody>
-            {% for account in accounts %}
+          {% for account in accounts %}
             <tr>
-                <td>{{ account.account_no }}</td>
-                <td>{{ account.client_profile }}</td>
-                <td>{{ account.current_balance }}</td>
-                <td>{{ account.annual_interest_rate }}%</td>
-                <td>{{ account.status }}</td>
-                <td>{{ account.opened_at|date:"M d, Y" }}</td>
-                <td>
-                    <a href="{% url 'savings_transaction_create' account.id %}">
-                        Deposit / Withdraw
-                    </a>
-                </td>
+              <td><span class="nc-ref">{{ account.account_no }}</span></td>
+              <td>{{ account.client_profile }}</td>
+              <td class="text-end fw-semibold text-nowrap">₱{{ account.current_balance|floatformat:2 }}</td>
+              <td>{{ account.annual_interest_rate|floatformat:2 }}%</td>
+              <td>
+                {% if account.status == "Active" %}<span class="nc-pill nc-positive">Active</span>
+                {% elif account.status == "Pending Verification" %}<span class="nc-pill nc-warning">Pending Verification</span>
+                {% elif account.status == "Closed" %}<span class="nc-pill nc-danger">Closed</span>
+                {% else %}<span class="nc-pill nc-neutral">{{ account.status }}</span>{% endif %}
+              </td>
+              <td class="text-nowrap">{{ account.opened_at|date:"M d, Y" }}</td>
+              <td>
+                {% if account.status == "Active" %}
+                  <a class="btn btn-sm btn-outline-primary text-nowrap" href="{% url 'savings_transaction_create' account.id %}"><i class="icon-base ri ri-exchange-dollar-line me-1"></i>Deposit / Withdraw</a>
+                {% else %}
+                  <span class="nc-muted">Unavailable</span>
+                {% endif %}
+              </td>
             </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7">No savings accounts found.</td>
-            </tr>
-            {% endfor %}
+          {% empty %}
+            <tr><td colspan="7"><div class="nc-empty"><i class="icon-base ri ri-wallet-3-line"></i>No savings accounts found.</div></td></tr>
+          {% endfor %}
         </tbody>
-    </table>
-
-</body>
-</html>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+/* NetCash savings management pages only; does not change shared banking CSS. */
+.nc-page .nc-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.nc-page .nc-kicker{text-transform:uppercase;letter-spacing:.09em;font-size:.72rem;font-weight:700;color:#16844e;margin-bottom:.35rem}
+.nc-page .nc-title{font-weight:750;color:#30334e;margin:0}
+.nc-page .nc-description{color:#75778b;margin:.4rem 0 0}
+.nc-page .nc-actions{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.nc-page .nc-actions .btn{white-space:nowrap}
+.nc-page .nc-card{background:#fff;border:1px solid #eceef5;border-radius:14px;box-shadow:0 3px 14px rgba(46,50,73,.045);overflow:hidden}
+.nc-page .nc-card-title{padding:1.15rem 1.25rem;border-bottom:1px solid #eef0f4;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem}
+.nc-page .nc-card-title h5{margin:0;font-weight:700}
+.nc-page .nc-card-body{padding:1.2rem 1.25rem}
+.nc-page .nc-input, .nc-page .nc-form-control input, .nc-page .nc-form-control select, .nc-page .nc-form-control textarea{width:100%;display:block;min-height:40px;padding:.55rem .8rem;background:#fff;border:1px solid #d9deea;border-radius:8px;color:#44465f;outline:none}
+.nc-page .nc-input:focus, .nc-page .nc-form-control input:focus, .nc-page .nc-form-control select:focus, .nc-page .nc-form-control textarea:focus{border-color:#13834a;box-shadow:0 0 0 3px rgba(21,128,61,.13)}
+.nc-page .nc-form-control input[type=checkbox]{width:auto;display:inline-block;min-height:0}
+.nc-page .nc-form-control textarea{min-height:110px}
+.nc-page .nc-form-label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.45rem}
+.nc-page .nc-help{font-size:.8rem;color:#77798b;margin-top:.35rem}
+.nc-page .nc-table{width:100%;margin:0;vertical-align:middle}
+.nc-page .nc-table th{background:#f5f6fa;color:#62647a;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;padding:.88rem 1rem;border-bottom:1px solid #e9eaf0}
+.nc-page .nc-table td{padding:1rem;border-bottom:1px solid #eef0f4;vertical-align:middle;color:#52546c}
+.nc-page .nc-table tbody tr:last-child td{border-bottom:0}
+.nc-page .nc-ref{font-weight:650;overflow-wrap:anywhere;color:#34374d}
+.nc-page .nc-muted{font-size:.83rem;color:#8a8da0}
+.nc-page .nc-pill{display:inline-flex;align-items:center;padding:.33rem .68rem;font-size:.75rem;font-weight:700;border-radius:7px;white-space:nowrap}
+.nc-page .nc-positive{color:#12803e;background:#e4f6e9}
+.nc-page .nc-warning{color:#976400;background:#fff3d4}
+.nc-page .nc-danger{color:#b43243;background:#ffe8eb}
+.nc-page .nc-neutral{color:#64677d;background:#edf0f6}
+.nc-page .nc-negative{color:#a94b30;background:#fff0e9}
+.nc-page .nc-empty{padding:3rem 1rem;text-align:center;color:#85889a}
+.nc-page .nc-empty i{font-size:2.2rem;color:#a1a8b8;display:block;margin-bottom:.75rem}
+.nc-page .nc-summary{background:linear-gradient(125deg,#ecf9f0,#f5fbf6);border:1px solid #dbefdf;border-radius:12px;padding:1.2rem;margin-bottom:1.25rem}
+.nc-page .nc-summary strong{display:block;color:#283a31;font-size:1.4rem;margin-top:.4rem}
+.nc-page .nc-filter{display:flex;align-items:end;gap:.8rem;flex-wrap:wrap}
+.nc-page .nc-filter .nc-field{flex:1 1 210px}
+.nc-page .nc-filter .nc-field--type{flex:0 1 220px}
+.nc-page .nc-filter .nc-field--buttons{flex:0 0 auto}
+.nc-page .nc-form-card{max-width:850px}
+.nc-page .nc-form-row{margin-bottom:1.1rem}
+.nc-page .nc-error{font-size:.84rem;color:#c6383e;margin-top:.25rem}
+@media(max-width:650px){.nc-page .nc-card-body{padding:1rem}.nc-page .nc-table th,.nc-page .nc-table td{padding:.75rem}.nc-page .nc-actions .btn{flex:1}.nc-page .nc-filter .nc-field,.nc-page .nc-filter .nc-field--type,.nc-page .nc-filter .nc-field--buttons{flex:1 1 100%}.nc-page .nc-filter .nc-field--buttons .btn{flex:1}.nc-page .nc-heading{align-items:flex-start}}

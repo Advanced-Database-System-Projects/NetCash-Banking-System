@@ -1,26 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Savings Account</title>
-</head>
-<body>
-
-    <h1>Create Savings Account</h1>
-    <p>Open a new savings account for an existing client.</p>
-
-    <form method="POST">
+{% extends "SysDataBase/base.html" %}
+{% load static %}
+{% block title %}Open Savings Account | NetCash{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/netcash_savings.css' %}?v=1">{% endblock %}
+{% block content %}
+<div class="nc-page">
+  <div class="nc-heading">
+    <div>
+      <div class="nc-kicker"><i class="icon-base ri ri-wallet-3-line me-1"></i> Savings Accounts</div>
+      <h4 class="nc-title">Open New Savings Account</h4>
+      <p class="nc-description">Create a savings account for an existing client.</p>
+    </div>
+    <a href="{% url 'savings_account_list' %}" class="btn btn-outline-secondary"><i class="icon-base ri ri-arrow-left-line me-1"></i>Back to Accounts</a>
+  </div>
+  <div class="nc-card nc-form-card">
+    <div class="nc-card-title"><h5>Account Information</h5></div>
+    <div class="nc-card-body">
+      <form method="post" class="nc-form-control">
         {% csrf_token %}
-
-        {{ form.as_p }}
-
-        <button type="submit">Create Account</button>
-    </form>
-
-    <br>
-
-    <a href="{% url 'savings_account_list' %}">Back to Savings Accounts</a>
-
-</body>
-</html>
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+          <div class="nc-form-row">
+            <label for="{{ field.id_for_label }}" class="nc-form-label">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="nc-help">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="nc-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <div class="nc-actions mt-4">
+          <button class="btn btn-primary" type="submit"><i class="icon-base ri ri-check-line me-1"></i>Create Account</button>
+          <a href="{% url 'savings_account_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

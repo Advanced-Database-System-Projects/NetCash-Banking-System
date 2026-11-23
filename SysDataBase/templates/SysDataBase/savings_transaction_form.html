@@ -1,28 +1,46 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Savings Transaction</title>
-</head>
-<body>
-
-    <h1>Deposit or Withdraw</h1>
-
-    <p>Account Number: {{ account.account_no }}</p>
-    <p>Client: {{ account.client_profile }}</p>
-    <p>Current Balance: {{ account.current_balance }}</p>
-
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-
-        <button type="submit">Submit Transaction</button>
-    </form>
-
-    <br>
-
-    <a href="{% url 'savings_account_list' %}">Back to Savings Accounts</a>
-
-</body>
-</html>
+{% extends "SysDataBase/base.html" %}
+{% load static %}
+{% block title %}Savings Transaction | NetCash{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/netcash_savings.css' %}?v=1">{% endblock %}
+{% block content %}
+<div class="nc-page">
+  <div class="nc-heading">
+    <div>
+      <div class="nc-kicker"><i class="icon-base ri ri-exchange-dollar-line me-1"></i> Savings Accounts</div>
+      <h4 class="nc-title">Deposit or Withdraw</h4>
+      <p class="nc-description">Record a savings transaction for this account.</p>
+    </div>
+    <a href="{% url 'savings_account_list' %}" class="btn btn-outline-secondary"><i class="icon-base ri ri-arrow-left-line me-1"></i>Back to Accounts</a>
+  </div>
+  <div class="nc-form-card">
+    <div class="nc-summary">
+      <div class="row g-3">
+        <div class="col-sm-6"><div class="nc-muted">Account Number</div><div class="fw-semibold">{{ account.account_no }}</div></div>
+        <div class="col-sm-6"><div class="nc-muted">Client</div><div class="fw-semibold">{{ account.client_profile }}</div></div>
+        <div class="col-12"><div class="nc-muted">Current Balance</div><strong>₱{{ account.current_balance|floatformat:2 }}</strong></div>
+      </div>
+    </div>
+    <div class="nc-card">
+      <div class="nc-card-title"><h5>Transaction Details</h5></div>
+      <div class="nc-card-body">
+        <form method="post" class="nc-form-control">
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+          {% for field in form %}
+            <div class="nc-form-row">
+              <label class="nc-form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="nc-help">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="nc-error">{{ error }}</div>{% endfor %}
+            </div>
+          {% endfor %}
+          <div class="nc-actions mt-4">
+            <button class="btn btn-primary" type="submit"><i class="icon-base ri ri-check-line me-1"></i>Submit Transaction</button>
+            <a href="{% url 'savings_account_list' %}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
