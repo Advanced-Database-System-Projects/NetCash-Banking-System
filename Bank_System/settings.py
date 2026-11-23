@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'n(_m@f^a!a^1883zd-!41#@r9370)oi367*18ccm!dx9f(&l*m'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG =  os.environ.get("DEBUG", "False").lower() == "true"
+DEBUG =  os.environ.get("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = ["127.0.0.1","localhost","bankingsys-zvlz.onrender.com",]
 
@@ -123,11 +123,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
-
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
 
 
 

@@ -1,0 +1,210 @@
+
+/* BankingSys Custom Styles */
+
+/* Navbar */
+#layout-navbar {
+    background: #ffffff !important;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(58, 53, 65, 0.1);
+    margin-top: 20px;
+    padding: 15px 24px;
+}
+
+#layout-navbar h5 {
+    color: #3c3a4a;
+    font-weight: 600;
+}
+
+#layout-navbar .btn-outline-danger {
+    border-radius: 8px;
+    padding: 8px 14px;
+}
+
+/* Sidebar */
+.app-brand-text {
+    font-size: 1.3rem;
+    letter-spacing: 0.5px;
+}
+
+#layout-menu .app-brand {
+    padding: 20px 24px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+}
+
+#layout-menu .app-brand-text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+#layout-menu .menu-inner {
+    padding-top: 12px !important;
+}
+
+/* Dashboard Spacing */
+.container-p-y {
+    padding-top: 30px !important;
+}
+
+/* Django Forms */
+.content-wrapper .card-body input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.content-wrapper .card-body select,
+.content-wrapper .card-body textarea {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0.875rem;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    transition: border-color 0.15s ease-in-out,
+                box-shadow 0.15s ease-in-out;
+}
+
+.content-wrapper .card-body input:focus,
+.content-wrapper .card-body select:focus,
+.content-wrapper .card-body textarea:focus {
+    outline: none;
+    border-color: #15803d !important;
+    box-shadow: 0 0 0 0.2rem rgba(21, 128, 61, 0.12) !important;
+}
+
+.content-wrapper .card-body .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.content-wrapper .card {
+    border-radius: 0.625rem;
+}
+
+.content-wrapper .card-header {
+    background-color: transparent;
+}
+
+/* Borrower Welcome Banner */
+.borrower-dashboard-header {
+    background: linear-gradient(120deg, #15803d, #22c55e);
+    color: #ffffff;
+    padding: 28px 32px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(21, 128, 61, 0.15);
+}
+
+.borrower-dashboard-header h3,
+.borrower-dashboard-header p {
+    color: #ffffff;
+}
+
+.borrower-dashboard-header .btn {
+    width: auto;
+    white-space: nowrap;
+}
+
+/* Borrower Dashboard Sections */
+.borrower-dashboard-section {
+    scroll-margin-top: 100px;
+}
+
+.borrower-dashboard-section .card {
+    border-radius: 12px;
+}
+
+.borrower-dashboard-section .table th {
+    white-space: nowrap;
+    font-size: 0.78rem;
+}
+
+.borrower-dashboard-section .table td {
+    vertical-align: middle;
+}
+
+/* Savings Balance */
+.borrower-dashboard-section .borrower-account-balance {
+    background: #eaf8ee !important;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.borrower-dashboard-section .borrower-account-balance h2 {
+    color: #15803d !important;
+}
+
+/* Primary Buttons */
+.borrower-dashboard-section .btn-primary {
+    --bs-btn-bg: #15803d;
+    --bs-btn-border-color: #15803d;
+    --bs-btn-hover-bg: #166534;
+    --bs-btn-hover-border-color: #166534;
+    --bs-btn-active-bg: #166534;
+    --bs-btn-active-border-color: #166534;
+
+    background-color: #15803d !important;
+    border-color: #15803d !important;
+    color: #ffffff !important;
+    width: auto;
+}
+
+.borrower-dashboard-section .btn-primary:hover {
+    background-color: #166534 !important;
+    border-color: #166534 !important;
+}
+
+/* Outline Buttons */
+.borrower-dashboard-section .btn-outline-primary {
+    color: #15803d !important;
+    border-color: #15803d !important;
+}
+
+.borrower-dashboard-section .btn-outline-primary:hover {
+    background-color: #15803d !important;
+    border-color: #15803d !important;
+    color: #ffffff !important;
+}
+
+/* Primary Links */
+.borrower-dashboard-section a.text-primary {
+    color: #15803d !important;
+}
+
+/* Borrower Transaction Form */
+.borrower-transaction-fields p {
+    margin-bottom: 16px;
+}
+
+.borrower-transaction-fields label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.borrower-transaction-fields input:not([type="checkbox"]):not([type="radio"]),
+.borrower-transaction-fields select,
+.borrower-transaction-fields textarea {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--bs-border-color, #d9dee3);
+    border-radius: 6px;
+    background: var(--bs-body-bg, #fff);
+}
+
+.borrower-transaction-fields input:focus,
+.borrower-transaction-fields select:focus,
+.borrower-transaction-fields textarea:focus {
+    outline: none;
+    border-color: #15803d !important;
+    box-shadow: 0 0 0 0.2rem rgba(21, 128, 61, 0.12) !important;
+}
+
+/* Mobile */
+@media (max-width: 575.98px) {
+    .borrower-dashboard-header {
+        padding: 20px;
+    }
+}

@@ -1,0 +1,73 @@
+{% extends "SysDataBase/base.html" %} {% load static %} {% block title %}Map
+Explorer{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/leaflet.css' %}" />
+<style>
+    #map {
+      height: 600px;
+      width: 100%;
+      border-radius: 8px;
+      position: relative;
+    }
+    #mapTools {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    left: auto;
+    z-index: 1001;
+    }
+    .searchBox {
+      display: flex;
+      gap: 6px;
+    }
+    .searchBox input {
+      flex: 1;
+    }
+    #searchResults {
+      max-height: 180px;
+      overflow-y: auto;
+      margin: 6px 0;
+    }
+    .search-result {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 4px;
+      padding: 6px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    #addMarkerBtn {
+      width: 100%;
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Location Map</h5>
+    <small class="text-muted">Find places and explore locations</small>
+  </div>
+  <div class="card-body">
+    <div id="map">
+      <div id="mapTools">
+        <div class="searchBox">
+          <input
+            type="text"
+            id="placeSearch"
+            placeholder="Search places..."
+            class="form-control"
+          />
+          <button id="searchBtn" class="btn btn-primary">🔍</button>
+        </div>
+        <div id="searchResults"></div>
+        <button id="addMarkerBtn" class="btn btn-outline-primary">
+          📍 Add Marker
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script src="{% static 'js/leaflet-global.js' %}"></script>
+<script src="{% static 'js/bmap.js' %}"></script>
+{% endblock %}

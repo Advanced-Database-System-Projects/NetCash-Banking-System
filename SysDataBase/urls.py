@@ -91,10 +91,6 @@ urlpatterns = [
     views.borrower_transaction_request,
     name="borrower_transaction_request"),
     path(
-    'loans/applications/<int:application_id>/reject/',
-    views.loan_application_reject,
-    name='loan_application_reject'),
-    path(
     "loans/applications/<int:application_id>/manual-review/",
     views.loan_application_manual_review,
     name="loan_application_manual_review"),
@@ -116,6 +112,21 @@ urlpatterns = [
         "borrower/profile/",
         views.borrower_profile,
         name="borrower_profile"
+<<<<<<< HEAD
     ),
 >>>>>>> 2f89ee08ebe343e1533e2b63c63fd33ac654b21b
+=======
+    ), 
+    path("map/", views.map_explorer, name="map_explorer"),
+
+    path(
+    "savings/transactions/review/",
+    views.savings_transaction_review_list,
+    name="savings_transaction_review_list"),
+
+    path(
+    "savings/transactions/<int:transaction_id>/review/",
+    views.savings_transaction_review,
+    name="savings_transaction_review"),
+>>>>>>> 37cb4de7dc3bdd196e74006126a52baf4a86d92c
 ]
