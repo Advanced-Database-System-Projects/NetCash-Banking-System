@@ -44,6 +44,13 @@ from django.db.models import Sum
 from .payment_gateway import simulate_payment
 from .forms import BorrowerTransactionRequestForm
 from .models import LoanApplicationHistory
+from .loan_decision_service import evaluate_automatic_loan_decision
+from django.db import IntegrityError
+
+from .loan_approval_service import (
+    approve_loan_application,
+    LoanApprovalError,
+)
 
 def borrower_signup(request):
 
@@ -350,6 +357,47 @@ def loan_application_list(request):
     )
 
 
+# RULE: ONE ACTIVE LOAN PER BORROWER
+# Pending application => block. Any loan that is not both Paid AND zero-balance
+# => block. Rejected applications and fully settled loans do not block.
+def get_loan_application_block_reason(client):
+    if Loan_application.objects.filter(
+        client_profile=client,
+        status=Loan_application.ApplicationStatus.PENDING,
+    ).exists():
+        return (
+            "You already have a pending loan application. "
+            "Please wait for its decision before applying again."
+        )
+
+    # An inconsistent record (e.g., Paid but outstanding balance remains)
+    # must not be treated as fully settled.
+    unsettled = Loans.objects.filter(
+        loan_application__client_profile=client,
+    ).exclude(
+        status=Loans.LoanStatus.PAID,
+        outstanding_balance__lte=Decimal("0.00"),
+    )
+    if unsettled.exists():
+        return (
+            "You already have a loan that is not fully settled. "
+            "You can apply again after it is marked Paid with zero balance."
+        )
+
+    # Protect against an old approved application without a matching loan row.
+    if Loan_application.objects.filter(
+        client_profile=client,
+        status=Loan_application.ApplicationStatus.APPROVED,
+        loan__isnull=True,
+    ).exists():
+        return (
+            "Your previous approved application needs to be reconciled "
+            "by staff before you can apply again."
+        )
+
+    return None
+
+
 @login_required
 def loan_application_create(request):
 
@@ -363,29 +411,102 @@ def loan_application_create(request):
     except Exception:
         return HttpResponseForbidden("No client profile found for this account.")
 
+    # Check the rule even when borrower opens the application form directly.
+    block_reason = get_loan_application_block_reason(client)
+    if block_reason:
+        messages.warning(request, block_reason)
+        return redirect("borrower_dashboard")
+
     if request.method == "POST":
         form = LoanApplicationForm(request.POST)
 
         if form.is_valid():
+            
             application = form.save(commit=False)
             application.client_profile = client
-            application.save()
 
-            # Record application submission
-            record_loan_application_history(
-                application=application,
-                action=LoanApplicationHistory.ActionType.SUBMITTED,
-                performed_by=request.user,
-                previous_status="",
-                new_status=application.status,
-                details="Borrower submitted a new loan application."
+            from django.db import IntegrityError
+            from .loan_decision_service import (
+                LoanDecision, DEMO_AUTOMATIC_APPROVAL_ENABLED,
+                evaluate_automatic_loan_decision,
+            )
+            from .loan_approval_service import (
+                LoanApprovalError, approve_loan_application,
             )
 
-            messages.success(
-                request,
-                "Your loan application was submitted successfully."
-            )
+            with transaction.atomic():
+                # Force a write on the borrower's profile to serialize
+                # submissions on SQLite (which ignores select_for_update).
+                Client_profile.objects.filter(pk=client.pk).update(
+                    updated_at=timezone.now()
+                )
+                block_reason = get_loan_application_block_reason(client)
+                if block_reason:
+                    messages.error(request, block_reason)
+                    return redirect("borrower_dashboard")
+                application.save()
+                record_loan_application_history(
+                    application=application,
+                    action=LoanApplicationHistory.ActionType.SUBMITTED,
+                    performed_by=request.user,
+                    previous_status="",
+                    new_status="Pending",
+                    details="Borrower submitted a new loan application.",
+                )
 
+                result = evaluate_automatic_loan_decision(application)
+                application.eligibility_status = result["decision"]
+                application.save(update_fields=["eligibility_status"])
+                record_loan_application_history(
+                    application=application,
+                    action=LoanApplicationHistory.ActionType.UPDATED,
+                    performed_by=None,
+                    previous_status="Pending",
+                    new_status="Pending",
+                    details=(
+                        "Rule-based preliminary classification: "
+                        + result["decision"] + ". "
+                        + " | ".join(result["reasons"])
+                    ),
+                )
+
+                if (DEMO_AUTOMATIC_APPROVAL_ENABLED
+                        and result["decision"] == LoanDecision.AUTO_APPROVAL_CANDIDATE):
+                    try:
+                        # Savepoint: failure leaves a pending application to review.
+                        with transaction.atomic():
+                            approve_loan_application(
+                                application_id=application.id,
+                                generate_agreement=generate_loan_agreement,
+                                approved_by=None,
+                                approval_source="automatic",
+                            )
+                    except (LoanApprovalError, IntegrityError) as exc:
+                        application.refresh_from_db()
+                        application.eligibility_status = LoanDecision.MANUAL_REVIEW
+                        application.save(update_fields=["eligibility_status"])
+                        record_loan_application_history(
+                            application=application,
+                            action=LoanApplicationHistory.ActionType.UPDATED,
+                            performed_by=None,
+                            previous_status="Pending",
+                            new_status="Pending",
+                            details=f"Automatic approval stopped; staff review required: {exc}",
+                        )
+
+            application.refresh_from_db()
+            if application.status == Loan_application.ApplicationStatus.APPROVED:
+                messages.success(
+                    request,
+                    "Your loan was automatically approved under the demo rules. "
+                    "Disbursement is a separate process.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Your loan application was submitted for rule-based evaluation. "
+                    "An officer may need to review it.",
+                )
             return redirect("borrower_dashboard")
 
     else:
@@ -429,15 +550,23 @@ def loan_application_detail(request, application_id):
 
 @login_required
 @require_POST
+
 def loan_application_manual_review(request, application_id):
 
     # Only Admin and Loan Officer can perform manual reviews
     if (
-        not request.user.roles
+        not request.user.is_authenticated
+        or not request.user.roles
         or request.user.roles.roles_name not in ["Admin", "Loan Officer"]
     ):
         return HttpResponseForbidden(
             "You are not authorized to perform loan risk reviews."
+        )
+
+    # Manual review must be submitted using POST
+    if request.method != "POST":
+        return HttpResponseForbidden(
+            "Manual risk review requires a POST request."
         )
 
     application = get_object_or_404(
@@ -446,9 +575,18 @@ def loan_application_manual_review(request, application_id):
     )
 
     # Only pending applications without credit history need this review
-    if application.status != "Pending" or application.credit_score is not None:
-        messages.error(request, "This application is not eligible for manual risk review.")
-        return redirect("loan_application_detail", application_id=application.id)
+    if (
+        application.status != "Pending"
+        or application.credit_score is not None
+    ):
+        messages.error(
+            request,
+            "This application is not eligible for manual risk review."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     risk_category = request.POST.get("risk_category", "").strip()
     rate_input = request.POST.get("interest_rate", "").strip()
@@ -459,12 +597,24 @@ def loan_application_manual_review(request, application_id):
     ]
 
     if risk_category not in valid_categories:
-        messages.error(request, "Please select a valid risk category.")
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.error(
+            request,
+            "Please select a valid risk category."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     if not review_notes:
-        messages.error(request, "Please provide notes explaining the risk decision.")
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.error(
+            request,
+            "Please provide notes explaining the risk decision."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     from decimal import Decimal, InvalidOperation
 
@@ -481,21 +631,36 @@ def loan_application_manual_review(request, application_id):
             request,
             "Enter a valid annual interest rate greater than 0% and not above 100%."
         )
-        return redirect("loan_application_detail", application_id=application.id)
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
-    # Save the manual review and its history together
+    # Save manual review and update automated evaluation together
     with transaction.atomic():
 
         application.risk_review_status = (
             Loan_application.RiskReviewStatus.COMPLETED
         )
+
         application.risk_category = risk_category
         application.manually_recommended_rate = interest_rate
         application.risk_review_notes = review_notes
         application.risk_review_by = request.user
         application.risk_reviewed_at = timezone.now()
+
         application.save()
 
+        # Re-evaluate after manual risk review
+        decision_result = evaluate_automatic_loan_decision(
+            application
+        )
+
+        # Update eligibility classification
+        application.eligibility_status = decision_result["decision"]
+        application.save(update_fields=["eligibility_status"])
+
+        # Record manual review history
         record_loan_application_history(
             application=application,
             action=LoanApplicationHistory.ActionType.RISK_REVIEWED,
@@ -505,7 +670,9 @@ def loan_application_manual_review(request, application_id):
             details=(
                 f"Risk category: {risk_category}. "
                 f"Recommended annual rate: {interest_rate}%. "
-                f"Notes: {review_notes}"
+                f"Notes: {review_notes}. "
+                f"Automated evaluation: "
+                f"{decision_result['decision']}."
             )
         )
 
@@ -514,78 +681,43 @@ def loan_application_manual_review(request, application_id):
         "Manual risk review completed successfully."
     )
 
-    return redirect("loan_application_detail", application_id=application.id)
+    return redirect(
+        "loan_application_detail",
+        application_id=application.id
+    )
+
+
 
 
 @login_required
 @require_POST
 def loan_application_approve(request, application_id):
+    from django.db import IntegrityError
+    from .loan_approval_service import LoanApprovalError, approve_loan_application
 
-    if not request.user.roles or request.user.roles.roles_name not in ["Admin", "Loan Officer"]:
+    if (
+        not request.user.is_staff
+        or not request.user.roles
+        or request.user.roles.roles_name not in ("Admin", "Loan Officer")
+    ):
         return HttpResponseForbidden("You are not authorized to approve loans.")
 
-    application = get_object_or_404(
-        Loan_application,
-        id=application_id
-    )
-
-    if application.status != "Pending":
-        messages.error(request, "This application has already been reviewed.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    from .loan_eligibility import evaluate_loan_eligibility
-
-    eligibility = evaluate_loan_eligibility(application)
-
-    if not eligibility["eligible"]:
-        messages.error(
-            request,
-            "This application does not meet the eligibility requirements."
+    try:
+        approve_loan_application(
+            application_id=application_id,
+            generate_agreement=generate_loan_agreement,
+            approved_by=request.user,
+            approval_source="manual",
         )
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.success(request, "Loan approved successfully.")
+    except Loan_application.DoesNotExist:
+        messages.error(request, "Loan application not found.")
+    except LoanApprovalError as exc:
+        messages.error(request, str(exc))
+    except IntegrityError:
+        messages.error(request, "A conflicting loan or agreement record exists.")
 
-    interest_rate = eligibility["recommended_interest_rate"]
-
-    if interest_rate is None:
-        messages.error(
-            request,
-            "Manual risk review is required before this loan can be approved."
-        )
-        return redirect("loan_application_detail", application_id=application.id)
-
-    if Loans.objects.filter(loan_application=application).exists():
-        messages.error(request, "A loan record already exists for this application.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    if Loan_agreement.objects.filter(loan_application=application).exists():
-        messages.error(request, "A loan agreement already exists for this application.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    with transaction.atomic():
-
-        loan = Loans.objects.create(
-            loan_application=application,
-            term_months=application.requested_term_months,
-            annual_interest_rate=interest_rate,
-            principal_amount=application.amount_requested,
-            outstanding_balance=application.amount_requested,
-            status="Approved"
-        )
-
-        # Preserve automatic loan agreement PDF generation
-        generate_loan_agreement(application, loan)
-
-        application.status = "Approved"
-        application.reviewed_by = request.user
-        application.reviewed_at = timezone.now()
-        application.save()
-
-    messages.success(
-        request,
-        f"Loan approved with a recommended annual interest rate of {interest_rate}%."
-    )
-
-    return redirect("loan_application_detail", application_id=application.id)
+    return redirect("loan_application_detail", application_id=application_id)
 
 @login_required
 @require_POST
