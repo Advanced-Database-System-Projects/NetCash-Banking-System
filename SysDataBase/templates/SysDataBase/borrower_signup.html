@@ -1,7 +1,8 @@
 
 {% extends 'SysDataBase/base.html' %}
+{% load static %}
 
-{% block title %}Borrower Registration | Banking System{% endblock %}
+{% block title %}Borrower Registration | NetCash{% endblock %}
 
 {% block content %}
 
@@ -10,9 +11,13 @@
     <div class="col-12 col-lg-10">
 
         <div class="text-center">
+            <img src="{% static 'img/brand/netcash-logo.png' %}"
+                 alt="NetCash logo"
+                 class="netcash-auth-logo mb-3"
+                 width="72" height="72">
             <h4 class="fw-bold mb-2">Create Your Borrower Account</h4>
             <p class="text-muted mb-0">
-                Complete the registration form to get started with BankingSys.
+                Complete the registration form to get started with NetCash.
             </p>
         </div>
 

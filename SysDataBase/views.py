@@ -44,6 +44,14 @@ from django.db.models import Sum
 from .payment_gateway import simulate_payment
 from .forms import BorrowerTransactionRequestForm
 from .models import LoanApplicationHistory
+from .notifications import notify_loan_decision
+from .loan_decision_service import evaluate_automatic_loan_decision
+from django.db import IntegrityError
+
+from .loan_approval_service import (
+    approve_loan_application,
+    LoanApprovalError,
+)
 
 def borrower_signup(request):
 
@@ -350,6 +358,47 @@ def loan_application_list(request):
     )
 
 
+# RULE: ONE ACTIVE LOAN PER BORROWER
+# Pending application => block. Any loan that is not both Paid AND zero-balance
+# => block. Rejected applications and fully settled loans do not block.
+def get_loan_application_block_reason(client):
+    if Loan_application.objects.filter(
+        client_profile=client,
+        status=Loan_application.ApplicationStatus.PENDING,
+    ).exists():
+        return (
+            "You already have a pending loan application. "
+            "Please wait for its decision before applying again."
+        )
+
+    # An inconsistent record (e.g., Paid but outstanding balance remains)
+    # must not be treated as fully settled.
+    unsettled = Loans.objects.filter(
+        loan_application__client_profile=client,
+    ).exclude(
+        status=Loans.LoanStatus.PAID,
+        outstanding_balance__lte=Decimal("0.00"),
+    )
+    if unsettled.exists():
+        return (
+            "You already have a loan that is not fully settled. "
+            "You can apply again after it is marked Paid with zero balance."
+        )
+
+    # Protect against an old approved application without a matching loan row.
+    if Loan_application.objects.filter(
+        client_profile=client,
+        status=Loan_application.ApplicationStatus.APPROVED,
+        loan__isnull=True,
+    ).exists():
+        return (
+            "Your previous approved application needs to be reconciled "
+            "by staff before you can apply again."
+        )
+
+    return None
+
+
 @login_required
 def loan_application_create(request):
 
@@ -363,29 +412,102 @@ def loan_application_create(request):
     except Exception:
         return HttpResponseForbidden("No client profile found for this account.")
 
+    # Check the rule even when borrower opens the application form directly.
+    block_reason = get_loan_application_block_reason(client)
+    if block_reason:
+        messages.warning(request, block_reason)
+        return redirect("borrower_dashboard")
+
     if request.method == "POST":
         form = LoanApplicationForm(request.POST)
 
         if form.is_valid():
+            
             application = form.save(commit=False)
             application.client_profile = client
-            application.save()
 
-            # Record application submission
-            record_loan_application_history(
-                application=application,
-                action=LoanApplicationHistory.ActionType.SUBMITTED,
-                performed_by=request.user,
-                previous_status="",
-                new_status=application.status,
-                details="Borrower submitted a new loan application."
+            from django.db import IntegrityError
+            from .loan_decision_service import (
+                LoanDecision, DEMO_AUTOMATIC_APPROVAL_ENABLED,
+                evaluate_automatic_loan_decision,
+            )
+            from .loan_approval_service import (
+                LoanApprovalError, approve_loan_application,
             )
 
-            messages.success(
-                request,
-                "Your loan application was submitted successfully."
-            )
+            with transaction.atomic():
+                # Force a write on the borrower's profile to serialize
+                # submissions on SQLite (which ignores select_for_update).
+                Client_profile.objects.filter(pk=client.pk).update(
+                    updated_at=timezone.now()
+                )
+                block_reason = get_loan_application_block_reason(client)
+                if block_reason:
+                    messages.error(request, block_reason)
+                    return redirect("borrower_dashboard")
+                application.save()
+                record_loan_application_history(
+                    application=application,
+                    action=LoanApplicationHistory.ActionType.SUBMITTED,
+                    performed_by=request.user,
+                    previous_status="",
+                    new_status="Pending",
+                    details="Borrower submitted a new loan application.",
+                )
 
+                result = evaluate_automatic_loan_decision(application)
+                application.eligibility_status = result["decision"]
+                application.save(update_fields=["eligibility_status"])
+                record_loan_application_history(
+                    application=application,
+                    action=LoanApplicationHistory.ActionType.UPDATED,
+                    performed_by=None,
+                    previous_status="Pending",
+                    new_status="Pending",
+                    details=(
+                        "Rule-based preliminary classification: "
+                        + result["decision"] + ". "
+                        + " | ".join(result["reasons"])
+                    ),
+                )
+
+                if (DEMO_AUTOMATIC_APPROVAL_ENABLED
+                        and result["decision"] == LoanDecision.AUTO_APPROVAL_CANDIDATE):
+                    try:
+                        # Savepoint: failure leaves a pending application to review.
+                        with transaction.atomic():
+                            approve_loan_application(
+                                application_id=application.id,
+                                generate_agreement=generate_loan_agreement,
+                                approved_by=None,
+                                approval_source="automatic",
+                            )
+                    except (LoanApprovalError, IntegrityError) as exc:
+                        application.refresh_from_db()
+                        application.eligibility_status = LoanDecision.MANUAL_REVIEW
+                        application.save(update_fields=["eligibility_status"])
+                        record_loan_application_history(
+                            application=application,
+                            action=LoanApplicationHistory.ActionType.UPDATED,
+                            performed_by=None,
+                            previous_status="Pending",
+                            new_status="Pending",
+                            details=f"Automatic approval stopped; staff review required: {exc}",
+                        )
+
+            application.refresh_from_db()
+            if application.status == Loan_application.ApplicationStatus.APPROVED:
+                messages.success(
+                    request,
+                    "Your loan was automatically approved under the demo rules. "
+                    "Disbursement is a separate process.",
+                )
+            else:
+                messages.success(
+                    request,
+                    "Your loan application was submitted for rule-based evaluation. "
+                    "An officer may need to review it.",
+                )
             return redirect("borrower_dashboard")
 
     else:
@@ -429,15 +551,23 @@ def loan_application_detail(request, application_id):
 
 @login_required
 @require_POST
+
 def loan_application_manual_review(request, application_id):
 
     # Only Admin and Loan Officer can perform manual reviews
     if (
-        not request.user.roles
+        not request.user.is_authenticated
+        or not request.user.roles
         or request.user.roles.roles_name not in ["Admin", "Loan Officer"]
     ):
         return HttpResponseForbidden(
             "You are not authorized to perform loan risk reviews."
+        )
+
+    # Manual review must be submitted using POST
+    if request.method != "POST":
+        return HttpResponseForbidden(
+            "Manual risk review requires a POST request."
         )
 
     application = get_object_or_404(
@@ -446,9 +576,18 @@ def loan_application_manual_review(request, application_id):
     )
 
     # Only pending applications without credit history need this review
-    if application.status != "Pending" or application.credit_score is not None:
-        messages.error(request, "This application is not eligible for manual risk review.")
-        return redirect("loan_application_detail", application_id=application.id)
+    if (
+        application.status != "Pending"
+        or application.credit_score is not None
+    ):
+        messages.error(
+            request,
+            "This application is not eligible for manual risk review."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     risk_category = request.POST.get("risk_category", "").strip()
     rate_input = request.POST.get("interest_rate", "").strip()
@@ -459,12 +598,24 @@ def loan_application_manual_review(request, application_id):
     ]
 
     if risk_category not in valid_categories:
-        messages.error(request, "Please select a valid risk category.")
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.error(
+            request,
+            "Please select a valid risk category."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     if not review_notes:
-        messages.error(request, "Please provide notes explaining the risk decision.")
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.error(
+            request,
+            "Please provide notes explaining the risk decision."
+        )
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
     from decimal import Decimal, InvalidOperation
 
@@ -481,21 +632,36 @@ def loan_application_manual_review(request, application_id):
             request,
             "Enter a valid annual interest rate greater than 0% and not above 100%."
         )
-        return redirect("loan_application_detail", application_id=application.id)
+        return redirect(
+            "loan_application_detail",
+            application_id=application.id
+        )
 
-    # Save the manual review and its history together
+    # Save manual review and update automated evaluation together
     with transaction.atomic():
 
         application.risk_review_status = (
             Loan_application.RiskReviewStatus.COMPLETED
         )
+
         application.risk_category = risk_category
         application.manually_recommended_rate = interest_rate
         application.risk_review_notes = review_notes
         application.risk_review_by = request.user
         application.risk_reviewed_at = timezone.now()
+
         application.save()
 
+        # Re-evaluate after manual risk review
+        decision_result = evaluate_automatic_loan_decision(
+            application
+        )
+
+        # Update eligibility classification
+        application.eligibility_status = decision_result["decision"]
+        application.save(update_fields=["eligibility_status"])
+
+        # Record manual review history
         record_loan_application_history(
             application=application,
             action=LoanApplicationHistory.ActionType.RISK_REVIEWED,
@@ -505,7 +671,9 @@ def loan_application_manual_review(request, application_id):
             details=(
                 f"Risk category: {risk_category}. "
                 f"Recommended annual rate: {interest_rate}%. "
-                f"Notes: {review_notes}"
+                f"Notes: {review_notes}. "
+                f"Automated evaluation: "
+                f"{decision_result['decision']}."
             )
         )
 
@@ -514,78 +682,43 @@ def loan_application_manual_review(request, application_id):
         "Manual risk review completed successfully."
     )
 
-    return redirect("loan_application_detail", application_id=application.id)
+    return redirect(
+        "loan_application_detail",
+        application_id=application.id
+    )
+
+
 
 
 @login_required
 @require_POST
 def loan_application_approve(request, application_id):
+    from django.db import IntegrityError
+    from .loan_approval_service import LoanApprovalError, approve_loan_application
 
-    if not request.user.roles or request.user.roles.roles_name not in ["Admin", "Loan Officer"]:
+    if (
+        not request.user.is_staff
+        or not request.user.roles
+        or request.user.roles.roles_name not in ("Admin", "Loan Officer")
+    ):
         return HttpResponseForbidden("You are not authorized to approve loans.")
 
-    application = get_object_or_404(
-        Loan_application,
-        id=application_id
-    )
-
-    if application.status != "Pending":
-        messages.error(request, "This application has already been reviewed.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    from .loan_eligibility import evaluate_loan_eligibility
-
-    eligibility = evaluate_loan_eligibility(application)
-
-    if not eligibility["eligible"]:
-        messages.error(
-            request,
-            "This application does not meet the eligibility requirements."
+    try:
+        approve_loan_application(
+            application_id=application_id,
+            generate_agreement=generate_loan_agreement,
+            approved_by=request.user,
+            approval_source="manual",
         )
-        return redirect("loan_application_detail", application_id=application.id)
+        messages.success(request, "Loan approved successfully.")
+    except Loan_application.DoesNotExist:
+        messages.error(request, "Loan application not found.")
+    except LoanApprovalError as exc:
+        messages.error(request, str(exc))
+    except IntegrityError:
+        messages.error(request, "A conflicting loan or agreement record exists.")
 
-    interest_rate = eligibility["recommended_interest_rate"]
-
-    if interest_rate is None:
-        messages.error(
-            request,
-            "Manual risk review is required before this loan can be approved."
-        )
-        return redirect("loan_application_detail", application_id=application.id)
-
-    if Loans.objects.filter(loan_application=application).exists():
-        messages.error(request, "A loan record already exists for this application.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    if Loan_agreement.objects.filter(loan_application=application).exists():
-        messages.error(request, "A loan agreement already exists for this application.")
-        return redirect("loan_application_detail", application_id=application.id)
-
-    with transaction.atomic():
-
-        loan = Loans.objects.create(
-            loan_application=application,
-            term_months=application.requested_term_months,
-            annual_interest_rate=interest_rate,
-            principal_amount=application.amount_requested,
-            outstanding_balance=application.amount_requested,
-            status="Approved"
-        )
-
-        # Preserve automatic loan agreement PDF generation
-        generate_loan_agreement(application, loan)
-
-        application.status = "Approved"
-        application.reviewed_by = request.user
-        application.reviewed_at = timezone.now()
-        application.save()
-
-    messages.success(
-        request,
-        f"Loan approved with a recommended annual interest rate of {interest_rate}%."
-    )
-
-    return redirect("loan_application_detail", application_id=application.id)
+    return redirect("loan_application_detail", application_id=application_id)
 
 @login_required
 @require_POST
@@ -607,6 +740,8 @@ def loan_application_reject(request, application_id):
     application.reviewed_by = request.user
     application.reviewed_at = timezone.now()
     application.save()
+    
+    notify_loan_decision(application, approved=False)
 
     messages.success(request, "Loan application rejected successfully.")
 
@@ -1032,53 +1167,137 @@ def generate_loan_agreement(application, loan):
 @login_required
 @require_POST
 def loan_disburse(request, loan_id):
-
-    if not request.user.is_staff or not request.user.roles or request.user.roles.roles_name not in ["Admin", "Loan Officer"]:
+    # LOAN DISBURSEMENT -> SAVINGS (single-credit atomic workflow)
+    # An approved loan is not money in the borrower's account yet.
+    # Credit savings only when staff explicitly disburses the loan.
+    if (
+        not request.user.is_staff
+        or not request.user.roles
+        or request.user.roles.roles_name not in ["Admin", "Loan Officer"]
+    ):
         return HttpResponseForbidden("You are not authorized to disburse loans.")
 
-    loan = get_object_or_404(Loans, id=loan_id)
-
-    if loan.status != Loans.LoanStatus.APPROVED:
-        messages.error(request, "Only approved loans can be disbursed.")
+    disbursement_date = parse_date(request.POST.get("disbursement_date", ""))
+    if not disbursement_date or disbursement_date > timezone.localdate():
+        messages.error(request, "Choose a valid disbursement date (not in the future).")
         return redirect("loan_list")
 
-    disbursement_date = parse_date(
-        request.POST.get("disbursement_date", "")
-    )
-
-    if not disbursement_date:
-        messages.error(request, "Please enter a valid disbursement date.")
-        return redirect("loan_list")
-
-    if disbursement_date > timezone.localdate():
-        messages.error(request, "The disbursement date cannot be in the future.")
-        return redirect("loan_list")
-
-    if Amortization_schedule.objects.filter(loans=loan).exists():
-        messages.error(request, "An amortization schedule already exists.")
-        return redirect("loan_list")
+    # Show a proper 404 for unknown loan IDs.
+    get_object_or_404(Loans, pk=loan_id)
 
     try:
         with transaction.atomic():
+            # First obtain a write lock even on SQLite, where select_for_update
+            # is ignored. Concurrent retries cannot both advance an Approved
+            # loan. This write and everything below are committed together.
+            claimed = Loans.objects.filter(
+                pk=loan_id,
+                status=Loans.LoanStatus.APPROVED,
+                disbursement_date__isnull=True,
+            ).update(updated_at=timezone.now())
+            if claimed != 1:
+                raise ValueError(
+                    "This loan has already been disbursed or is not approved."
+                )
+
+            loan = Loans.objects.select_for_update().select_related(
+                "loan_application__client_profile"
+            ).get(pk=loan_id)
+
+            if Amortization_schedule.objects.filter(loans=loan).exists():
+                raise ValueError(
+                    "An amortization schedule already exists. Please review this loan."
+                )
+
+            client = loan.loan_application.client_profile
+            try:
+                account = Savings_account.objects.select_for_update().get(
+                    client_profile=client
+                )
+            except Savings_account.DoesNotExist:
+                raise ValueError("The borrower has no savings account.")
+
+            if account.status != Savings_account.AccountStatus.ACTIVE:
+                raise ValueError(
+                    "Activate the borrower's savings account before disbursement."
+                )
+
+            amount = loan.principal_amount
+            if amount is None or amount <= Decimal("0.00"):
+                raise ValueError("Loan principal must be greater than zero.")
+
+            # Stable unique reference acts as an additional safeguard. Avoid
+            # creating a second deposit for the same loan ID.
+            reference = f"LOANDISB-{loan.pk}"
+            if Savings_transaction.objects.filter(
+                reference_number=reference
+            ).exists():
+                raise ValueError(
+                    "A savings credit already exists for this loan."
+                )
+
+            # Represent loan proceeds as a Deposit in the existing transaction
+            # model (no schema change required); the unique reference and ledger
+            # entry_type distinguish it from a normal cash deposit.
+            savings_transaction = Savings_transaction.objects.create(
+                savings_account=account,
+                transaction_type=Savings_transaction.TransactionType.DEPOSIT,
+                reference_number=reference,
+                amount=amount,
+                status=Savings_transaction.TransactionStatus.APPROVED,
+            )
+
+            account.current_balance += amount
+            account.save(update_fields=["current_balance", "updated_at"])
+
+            # Internal credit: loan receivable increases (debit); the bank's
+            # liability for the credited savings balance increases (credit).
+            Transaction_records.objects.create(
+                savings_transaction=savings_transaction,
+                debit_amount=amount,
+                credit_amount=Decimal("0.00"),
+                entry_type="Loan Disbursement",
+                account_code="LOAN_RECEIVABLE",
+            )
+            Transaction_records.objects.create(
+                savings_transaction=savings_transaction,
+                debit_amount=Decimal("0.00"),
+                credit_amount=amount,
+                entry_type="Loan Disbursement",
+                account_code="SAVINGS_LIABILITY",
+            )
 
             loan.disbursement_date = disbursement_date
             loan.status = Loans.LoanStatus.ACTIVE
-            loan.save()
+            loan.save(update_fields=["disbursement_date", "status", "updated_at"])
 
+            # Any failure while making the schedule rolls back the balance,
+            # savings transaction, ledger and loan status together.
             generate_amortization_schedule(loan)
 
         messages.success(
             request,
-            "Loan successfully disbursed and amortization schedule generated."
+            f"Loan disbursed! PHP {amount:,.2f} credited to the borrower's "
+            f"savings account. Reference: {reference}"
         )
-
-    except (ValueError, ArithmeticError):
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    except (ArithmeticError, InvalidOperation):
+        messages.error(request, "Invalid loan details; disbursement was canceled.")
+    except Exception:
+        # A DB constraint error or another unexpected failure rolls back the
+        # atomic transaction. The traceback is preserved in the server logs.
+        import logging
+        logging.getLogger(__name__).exception(
+            "Loan disbursement failed for loan %s", loan_id
+        )
         messages.error(
             request,
-            "Unable to generate the amortization schedule. Please check the loan details."
+            "Disbursement failed; no loan credit was applied. Check server logs."
         )
 
     return redirect("loan_list")
+
 
 
 
@@ -1428,24 +1647,35 @@ def borrower_dashboard(request):
         context
     )
 
+
 @login_required
 def home_dashboard(request):
 
-    role = request.user.roles.roles_name if request.user.roles else None
+    role = (
+        request.user.roles.roles_name
+        if request.user.roles
+        else None
+    )
 
-    if role == "Borrower":
+    # Redirect regular borrowers to their dashboard.
+    if role == "Borrower" and not request.user.is_superuser:
         return redirect("borrower_dashboard")
 
-    if (
-        not request.user.is_staff
-        or role not in ["Admin", "Staff", "Loan Officer"]
+    # Allow staff with management roles and Django superusers.
+    if not (
+        request.user.is_active
+        and request.user.is_staff
+        and (
+            request.user.is_superuser
+            or role in ["Admin", "Staff", "Loan Officer"]
+        )
     ):
         return HttpResponseForbidden(
             "You are not authorized to access the Management Portal."
         )
 
     context = {
-        "role": role,
+        "role": "Admin" if request.user.is_superuser else role,
         "total_clients": Client_profile.objects.count(),
         "total_applications": Loan_application.objects.count(),
         "pending_applications": Loan_application.objects.filter(
@@ -1462,6 +1692,7 @@ def home_dashboard(request):
         context
     )
 
+
 def check_savings_ledger(savings_transaction):
     totals = Transaction_records.objects.filter(
         savings_transaction=savings_transaction
@@ -1476,12 +1707,14 @@ def check_savings_ledger(savings_transaction):
     return total_debit == total_credit
 
 
+
 @login_required
 @require_POST
 def borrower_transaction_request(request):
-
-    # Only borrowers can use this feature
-    role = request.user.roles.roles_name if request.user.roles else None
+    role = (
+        request.user.roles.roles_name
+        if request.user.roles else None
+    )
 
     if role != "Borrower":
         return HttpResponseForbidden("Borrowers only.")
@@ -1491,120 +1724,81 @@ def borrower_transaction_request(request):
     except Client_profile.DoesNotExist:
         return HttpResponseForbidden("Client profile not found.")
 
-    account = get_object_or_404(
-        Savings_account,
-        client_profile=profile
-    )
-
-    if account.status != Savings_account.AccountStatus.ACTIVE:
-        messages.error(
-            request,
-            "Your savings account is not active."
-        )
-        return redirect("borrower_dashboard")
-
     form = BorrowerTransactionRequestForm(request.POST)
 
     if not form.is_valid():
-        for errors in form.errors.values():
-            for error in errors:
-                messages.error(request, error)
-
+        messages.error(request, "Invalid transaction details.")
         return redirect("borrower_dashboard")
 
     transaction_type = form.cleaned_data["transaction_type"]
     amount = form.cleaned_data["amount"]
 
-    with transaction.atomic():
+    if transaction_type not in [
+        Savings_transaction.TransactionType.DEPOSIT,
+        Savings_transaction.TransactionType.WITHDRAWAL,
+    ]:
+        messages.error(request, "Invalid transaction type.")
+        return redirect("borrower_dashboard")
 
-        # Lock the savings account while processing
-        account = Savings_account.objects.select_for_update().get(
-            id=account.id
+    if (
+        amount <= 0
+        or not amount.is_finite()
+        or amount.as_tuple().exponent < -2
+    ):
+        messages.error(request, "Enter a valid positive amount.")
+        return redirect("borrower_dashboard")
+
+    with transaction.atomic():
+        account = get_object_or_404(
+            Savings_account.objects.select_for_update(),
+            client_profile=profile
         )
 
         if account.status != Savings_account.AccountStatus.ACTIVE:
-            messages.error(request, "Your account is not active.")
-            return redirect("borrower_dashboard")
-
-        # Check withdrawal balance before processing
-        if (
-            transaction_type == Savings_transaction.TransactionType.WITHDRAWAL
-            and amount > account.current_balance
-        ):
             messages.error(
-                request,
-                "Insufficient savings balance."
+                request, "Your savings account is not active."
             )
             return redirect("borrower_dashboard")
 
-        # Create a pending transaction
-        savings_transaction = Savings_transaction.objects.create(
+        # Reserve funds against other pending withdrawal requests.
+        if transaction_type == Savings_transaction.TransactionType.WITHDRAWAL:
+            pending_total = (
+                Savings_transaction.objects.filter(
+                    savings_account=account,
+                    status=Savings_transaction.TransactionStatus.PENDING,
+                    transaction_type=(
+                        Savings_transaction.TransactionType.WITHDRAWAL
+                    )
+                ).aggregate(total=Sum("amount"))["total"]
+                or Decimal("0.00")
+            )
+
+            available = account.current_balance - pending_total
+
+            if amount > available:
+                messages.error(
+                    request,
+                    "Insufficient available balance."
+                )
+                return redirect("borrower_dashboard")
+
+        Savings_transaction.objects.create(
             savings_account=account,
             transaction_type=transaction_type,
-            reference_number="TXN" + uuid.uuid4().hex[:12].upper(),
             amount=amount,
+            reference_number=(
+                "TXN" + uuid.uuid4().hex[:12].upper()
+            ),
             status=Savings_transaction.TransactionStatus.PENDING
-        )
-
-        # Simulate deposit or withdrawal processing
-        gateway_result = simulate_payment(amount)
-
-        if gateway_result["status"] != "SUCCESS":
-            savings_transaction.status = (
-                Savings_transaction.TransactionStatus.FAILED
-            )
-            savings_transaction.save()
-
-            messages.error(
-                request,
-                "Transaction failed. Your balance was not changed."
-            )
-            return redirect("borrower_dashboard")
-
-        # Update balance only after successful simulated processing
-        if transaction_type == Savings_transaction.TransactionType.DEPOSIT:
-            account.current_balance += amount
-            entry_type = "Savings Deposit"
-            debit_account = "CASH"
-            credit_account = "SAVINGS_LIABILITY"
-
-        else:
-            account.current_balance -= amount
-            entry_type = "Savings Withdrawal"
-            debit_account = "SAVINGS_LIABILITY"
-            credit_account = "CASH"
-
-        account.save()
-
-        # Mark transaction as approved
-        savings_transaction.status = (
-            Savings_transaction.TransactionStatus.APPROVED
-        )
-        savings_transaction.save()
-
-        # Create balanced accounting entries
-        Transaction_records.objects.create(
-            savings_transaction=savings_transaction,
-            debit_amount=amount,
-            credit_amount=Decimal("0.00"),
-            entry_type=entry_type,
-            account_code=debit_account
-        )
-
-        Transaction_records.objects.create(
-            savings_transaction=savings_transaction,
-            debit_amount=Decimal("0.00"),
-            credit_amount=amount,
-            entry_type=entry_type,
-            account_code=credit_account
         )
 
     messages.success(
         request,
-        "Your transaction was successfully processed!"
+        "Transaction request submitted. Awaiting admin approval."
     )
 
     return redirect("borrower_dashboard")
+
 
 def record_loan_application_history(
     application,
@@ -1651,3 +1845,172 @@ def borrower_profile(request):
 @login_required
 def map_explorer(request):
     return render(request, "SysDataBase/map.html")
+
+
+@login_required
+def savings_transaction_review_list(request):
+    role = (
+        request.user.roles.roles_name
+        if request.user.roles else None
+    )
+
+    if not (
+            request.user.is_active
+            and request.user.is_staff
+            and (
+                   request.user.is_superuser
+                   or role == "Admin"
+            )
+        ):
+            return HttpResponseForbidden("Admins only.")
+
+    requests = (
+        Savings_transaction.objects
+        .filter(status=Savings_transaction.TransactionStatus.PENDING)
+        .select_related(
+            "savings_account",
+            "savings_account__client_profile",
+            "savings_account__client_profile__users"
+        )
+        .order_by("transaction_date")
+    )
+
+    return render(
+        request,
+        "SysDataBase/savings_transaction_review.html",
+        {"requests": requests}
+    )
+
+
+@login_required
+@require_POST
+def savings_transaction_review(request, transaction_id):
+    role = (
+        request.user.roles.roles_name
+        if request.user.roles else None
+    )
+
+    if not (
+        request.user.is_active
+        and request.user.is_staff
+        and (
+               request.user.is_superuser
+               or role == "Admin"
+        )
+    ):
+        return HttpResponseForbidden("Admins only.")
+
+    decision = request.POST.get("decision")
+
+    if decision not in ["approve", "reject"]:
+        messages.error(request, "Invalid review decision.")
+        return redirect("savings_transaction_review_list")
+
+    with transaction.atomic():
+        txn = get_object_or_404(
+            Savings_transaction.objects.select_for_update(),
+            pk=transaction_id
+        )
+
+        # Prevent duplicate approval or rejection.
+        if txn.status != Savings_transaction.TransactionStatus.PENDING:
+            messages.error(request, "Transaction already reviewed.")
+            return redirect("savings_transaction_review_list")
+
+        account = Savings_account.objects.select_for_update().get(
+            pk=txn.savings_account_id
+        )
+
+        if decision == "approve":
+            if account.status != Savings_account.AccountStatus.ACTIVE:
+                messages.error(request, "Savings account is not active.")
+                return redirect("savings_transaction_review_list")
+
+            if txn.transaction_type == Savings_transaction.TransactionType.DEPOSIT:
+                account.current_balance += txn.amount
+
+                debit_code = "CASH"
+                credit_code = "SAVINGS_LIABILITY"
+                entry_type = "Savings Deposit"
+
+            elif txn.transaction_type == Savings_transaction.TransactionType.WITHDRAWAL:
+                if txn.amount > account.current_balance:
+                    messages.error(
+                        request,
+                        "Insufficient balance. Cannot approve withdrawal."
+                    )
+                    return redirect("savings_transaction_review_list")
+
+                account.current_balance -= txn.amount
+
+                debit_code = "SAVINGS_LIABILITY"
+                credit_code = "CASH"
+                entry_type = "Savings Withdrawal"
+
+            else:
+                messages.error(request, "Invalid transaction type.")
+                return redirect("savings_transaction_review_list")
+
+            # Prevent processing records with existing ledger entries.
+            if Transaction_records.objects.filter(
+                savings_transaction=txn
+            ).exists():
+                messages.error(
+                    request,
+                    "This transaction already has ledger entries."
+                )
+                return redirect("savings_transaction_review_list")
+
+            account.save(update_fields=["current_balance", "updated_at"])
+
+            Transaction_records.objects.create(
+                savings_transaction=txn,
+                debit_amount=txn.amount,
+                credit_amount=Decimal("0.00"),
+                entry_type=entry_type,
+                account_code=debit_code
+            )
+
+            Transaction_records.objects.create(
+                savings_transaction=txn,
+                debit_amount=Decimal("0.00"),
+                credit_amount=txn.amount,
+                entry_type=entry_type,
+                account_code=credit_code
+            )
+
+            txn.status = Savings_transaction.TransactionStatus.APPROVED
+
+        else:
+            txn.status = Savings_transaction.TransactionStatus.REJECTED
+
+        txn.save(update_fields=["status", "updated_at"])
+
+        borrower = account.client_profile.users
+        amount = txn.amount
+        txn_type = txn.transaction_type
+        reference = txn.reference_number
+        decision_status = txn.status
+
+        # Notify only after the database transaction commits.
+        from .notifications import notify
+
+        def send_decision_notification():
+            notify(
+                borrower,
+                (
+                    f"Your {txn_type.lower()} request of "
+                    f"PHP {amount:,.2f} ({reference}) "
+                    f"has been {decision_status.lower()}."
+                ),
+                subject=f"Savings Transaction {decision_status}"
+            )
+
+        transaction.on_commit(send_decision_notification)
+
+    messages.success(
+        request,
+        f"Transaction {decision_status.lower()} successfully."
+    )
+
+    return redirect("savings_transaction_review_list")

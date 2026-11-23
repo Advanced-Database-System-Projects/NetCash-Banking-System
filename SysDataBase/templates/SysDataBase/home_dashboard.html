@@ -1,14 +1,14 @@
 
 {% extends "SysDataBase/base.html" %}
 
-{% block title %}Dashboard | Banking System{% endblock %}
+{% block title %}Dashboard | NetCash{% endblock %}
 
 {% block content %}
 
 <!-- Dashboard Header -->
 <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between mb-4 gap-2">
     <div>
-        <h4 class="mb-1 fw-bold">Banking System Dashboard</h4>
+        <h4 class="mb-1 fw-bold">NetCash Dashboard</h4>
         <p class="text-muted mb-0">
             Welcome, {{ request.user.username }}!
             Your role: {{ role|default:"No role assigned" }}

@@ -1,7 +1,7 @@
 
 {% extends 'SysDataBase/base.html' %}
 
-{% block title %}My Dashboard | Banking System{% endblock %}
+{% block title %}My Dashboard | NetCash{% endblock %}
 
 {% block content %}
 
@@ -11,7 +11,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
             <p class="small text-uppercase fw-semibold mb-2">
-                My Banking Overview
+                NetCash Overview
             </p>
             <h3 class="fw-bold mb-2">
                 Welcome, {{ client.first_name }}!
@@ -376,6 +376,7 @@
                             <th>Type</th>
                             <th>Amount</th>
                             <th>Date</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
 
@@ -415,12 +416,32 @@
                             <td>
                                 {{ item.transaction_date|date:"M d, Y h:i A" }}
                             </td>
+
+                            <td>
+                            {% if item.status == "Pending" %}
+                                <span class="badge bg-warning">
+                                    Pending Approval
+                                </span>
+                            {% elif item.status == "Approved" %}
+                                <span class="badge bg-success">
+                                    Approved
+                                </span>
+                            {% elif item.status == "Rejected" %}
+                                <span class="badge bg-danger">
+                                    Declined
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    {{ item.status }}
+                                </span>
+                            {% endif %}
+                            </td>
                         </tr>
 
                         {% empty %}
 
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 No savings transactions available.
                             </td>
                         </tr>

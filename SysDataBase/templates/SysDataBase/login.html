@@ -1,12 +1,16 @@
 
 {% extends "SysDataBase/base.html" %}
+{% load static %}
 
-{% block title %}Login | Banking System{% endblock %}
+{% block title %}Login | NetCash{% endblock %}
 
 {% block content %}
 
 <!-- LOGIN PAGE -->
-<div class="row justify-content-center align-items-center py-5">
+
+<div class="row justify-content-center align-items-center py-4"
+     style="min-height: calc(100vh - 6rem);">
+
 
     <div class="col-12 col-sm-10 col-md-8 col-lg-6 col-xl-5">
 
@@ -19,11 +23,13 @@
                 <div class="text-center mb-4">
 
                     <div class="mb-3">
-                        <i class="icon-base ri ri-bank-line text-primary"
-                           style="font-size: 3rem;"></i>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-auth-logo"
+                             width="76" height="76">
                     </div>
 
-                    <h4 class="fw-bold mb-1">Welcome to BankingSys</h4>
+                    <h4 class="fw-bold mb-1">Welcome to NetCash</h4>
 
                     <p class="text-muted mb-0">
                         Sign in to access your banking account.

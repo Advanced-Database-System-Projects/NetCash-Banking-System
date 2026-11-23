@@ -1,0 +1,84 @@
+{% extends 'SysDataBase/base.html' %}
+{% block title %}Audit Trail | NetCash{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Audit Trail</h4>
+        <p class="text-muted mb-0">Read-only history of key system actions and database changes.</p>
+    </div>
+    <a class="btn btn-outline-success" href="{% url 'audit_log_export' %}?q={{ q|urlencode }}&start={{ start|urlencode }}&end={{ end|urlencode }}">
+        <i class="icon-base ri ri-download-line me-1"></i>Export CSV
+    </a>
+</div>
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{% url 'audit_log_list' %}" class="row g-3 align-items-end">
+            <div class="col-12 col-md-5">
+                <label for="audit-q" class="form-label">Search by user, action, record type or ID</label>
+                <input class="form-control" id="audit-q" type="search" name="q" value="{{ q }}" placeholder="e.g. Loan_payments or LOGIN">
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="audit-start" class="form-label">From</label>
+                <input class="form-control" id="audit-start" type="date" name="start" value="{{ start }}">
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="audit-end" class="form-label">To</label>
+                <input class="form-control" id="audit-end" type="date" name="end" value="{{ end }}">
+            </div>
+            <div class="col-12 col-md-1">
+                <button type="submit" class="btn btn-success w-100">Go</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Audit Records</h5>
+        <span class="text-muted small">{{ page_obj.paginator.count }} record(s)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>When</th><th>User</th><th>Action</th><th>Record</th><th>Record ID</th></tr></thead>
+            <tbody>
+                {% for item in page_obj %}
+                <tr>
+                    <td class="text-nowrap">{{ item.action_timestamp|date:'M d, Y H:i:s' }}</td>
+                    <td>{{ item.users.username|default:'System/Unknown' }}</td>
+                    <td>
+                        {% if item.action == 'DELETE' %}
+                        <span class="badge bg-label-danger">{{ item.action }}</span>
+                        {% elif item.action == 'CREATE' or item.action == 'LOGIN' %}
+                        <span class="badge bg-label-success">{{ item.action }}</span>
+                        {% elif item.action == 'UPDATE' %}
+                        <span class="badge bg-label-info">{{ item.action }}</span>
+                        {% else %}
+                        <span class="badge bg-label-secondary">{{ item.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.entity_name }}</td>
+                    <td>{{ item.entity_id|default:'—' }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-5">No audit records found for this filter. New activity will appear here.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="card-footer d-flex align-items-center justify-content-between gap-2 flex-wrap">
+        <small class="text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</small>
+        <div class="d-flex gap-2">
+            {% if page_obj.has_previous %}
+            <a class="btn btn-sm btn-outline-secondary" href="?q={{ q|urlencode }}&start={{ start|urlencode }}&end={{ end|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+            <a class="btn btn-sm btn-outline-secondary" href="?q={{ q|urlencode }}&start={{ start|urlencode }}&end={{ end|urlencode }}&page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+<div class="alert alert-info mt-3 mb-0" role="alert">
+    Logs include model create/update/delete events, successful logins/logouts, and submitted HTTP changes. A <strong>REQUEST</strong> event is an attempt, not proof of success. Bulk database updates and direct SQL may not be captured by model signals.
+</div>
+{% endblock %}

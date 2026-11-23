@@ -1,20 +1,24 @@
 
 {% load static %}
 
-<link rel="manifest" href="{% static 'manifest.json' %}">
-
-<meta name="theme-color" content="#15803d">
-
-<link rel="apple-touch-icon"
-      href="{% static 'img/icons/icon-192.png' %}">
-
 <!DOCTYPE html>
-<html lang="en" class="layout-menu-fixed" data-bs-theme="light">
+
+<html lang="en"
+      class="{% if user.is_authenticated %}layout-menu-fixed{% else %}layout-without-menu{% endif %}"
+      data-bs-theme="light">
+
 <head>
+    <!-- NetCash branding and progressive web app icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/brand/netcash-icon-32.png' %}?v=netcash1">
+    <link rel="shortcut icon" href="{% static 'img/favicon/favicon.ico' %}?v=netcash1">
+    <link rel="apple-touch-icon" href="{% static 'img/brand/netcash-icon-180.png' %}?v=netcash1">
+    <link rel="manifest" href="{% static 'manifest.json' %}?v=netcash1">
+    <meta name="theme-color" content="#15803d">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>{% block title %}Banking System{% endblock %}</title>
+    <title>{% block title %}NetCash{% endblock %}</title>
 
     <!-- Materio Fonts and Icons -->
     <link rel="stylesheet" href="{% static 'vendor/fonts/iconify-icons.css' %}">
@@ -48,9 +52,11 @@
 
                 <div class="app-brand demo">
                     <a href="{% url 'borrower_dashboard' %}" class="app-brand-link">
-                        <span class="app-brand-text demo menu-text fw-bold">
-                            My Banking
-                        </span>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-sidebar-logo me-2"
+                             width="42" height="42">
+                        <span class="app-brand-text demo menu-text fw-bold">NetCash</span>
                     </a>
 
                     <a href="javascript:void(0);"
@@ -141,9 +147,11 @@
 
                 <div class="app-brand demo">
                     <a href="{% url 'home_dashboard' %}" class="app-brand-link">
-                        <span class="app-brand-text demo menu-text fw-bold">
-                            BankingSys
-                        </span>
+                        <img src="{% static 'img/brand/netcash-logo.png' %}"
+                             alt="NetCash logo"
+                             class="netcash-sidebar-logo me-2"
+                             width="42" height="42">
+                        <span class="app-brand-text demo menu-text fw-bold">NetCash</span>
                     </a>
 
                     <a href="javascript:void(0);"
@@ -210,6 +218,18 @@
                         </a>
                     </li>
 
+
+                    {% if user.roles.roles_name == "Admin" %}
+                    <li class="menu-item {% if request.resolver_match.url_name == 'savings_transaction_review_list' %}active{% endif %}">
+                         <a href="{% url 'savings_transaction_review_list' %}"
+                          class="menu-link">
+                                <i class="menu-icon icon-base ri ri-checkbox-circle-line"></i>
+                                <div>Transaction Approvals</div>
+                            </a>
+                    </li>
+                    {% endif %}
+
+
                     <li class="menu-item {% if request.resolver_match.url_name == 'loan_payment_list' %}active{% endif %}">
                         <a href="{% url 'loan_payment_list' %}" class="menu-link">
                             <i class="menu-icon icon-base ri ri-bank-card-line"></i>
@@ -224,9 +244,25 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {% if request.resolver_match.url_name == 'financial_report' %}active{% endif %}">
+                        <a href="{% url 'financial_report' %}" class="menu-link">
+                            <i class="menu-icon icon-base ri ri-file-chart-line"></i>
+                            <div>Financial Reports</div>
+                        </a>
+                    </li>
+
                     <li class="menu-header small text-uppercase">
                         <span class="menu-header-text">System</span>
                     </li>
+
+                    {% if user.is_staff and user.roles.roles_name == "Admin" or user.is_superuser %}
+                    <li class="menu-item {% if request.resolver_match.url_name == 'audit_log_list' %}active{% endif %}">
+                        <a href="{% url 'audit_log_list' %}" class="menu-link">
+                            <i class="menu-icon icon-base ri ri-shield-check-line"></i>
+                            <div>Audit Logs</div>
+                        </a>
+                    </li>
+                    {% endif %}
 
                     <li class="menu-item {% if request.resolver_match.url_name == 'notification_list' %}active{% endif %}">
                         <a href="{% url 'notification_list' %}" class="menu-link">
@@ -363,7 +399,7 @@
             navigator.serviceWorker
                 .register("/service-worker.js")
                 .then(function () {
-                    console.log("BankingSys PWA registered");
+                    console.log("NetCash PWA registered");
                 })
                 .catch(function (error) {
                     console.error(

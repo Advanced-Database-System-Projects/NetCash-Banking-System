@@ -1,8 +1,13 @@
 
 from django.urls import path
 from . import views
+from . import financial_reports
+from . import audit_views
 
 urlpatterns = [
+    path("system/audit/", audit_views.audit_log_list, name="audit_log_list"),
+    path("system/audit/export/", audit_views.audit_log_export, name="audit_log_export"),
+    path("financial/reports/", financial_reports.financial_report, name="financial_report"),
     path("", views.home_dashboard, name="home_dashboard"),
     path("clients/", views.client_list, name="client_list"),
     path("clients/add/", views.client_create, name="client_create"),
@@ -91,10 +96,6 @@ urlpatterns = [
     views.borrower_transaction_request,
     name="borrower_transaction_request"),
     path(
-    'loans/applications/<int:application_id>/reject/',
-    views.loan_application_reject,
-    name='loan_application_reject'),
-    path(
     "loans/applications/<int:application_id>/manual-review/",
     views.loan_application_manual_review,
     name="loan_application_manual_review"),
@@ -104,4 +105,14 @@ urlpatterns = [
         name="borrower_profile"
     ), 
     path("map/", views.map_explorer, name="map_explorer"),
+
+    path(
+    "savings/transactions/review/",
+    views.savings_transaction_review_list,
+    name="savings_transaction_review_list"),
+
+    path(
+    "savings/transactions/<int:transaction_id>/review/",
+    views.savings_transaction_review,
+    name="savings_transaction_review"),
 ]

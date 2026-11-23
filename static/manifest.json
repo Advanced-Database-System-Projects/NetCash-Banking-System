@@ -1,8 +1,7 @@
-
 {
-  "name": "BankingSys",
-  "short_name": "BankingSys",
-  "description": "Banking and Loan Management System",
+  "name": "NetCash",
+  "short_name": "NetCash",
+  "description": "NetCash Banking and Loan Management System",
   "id": "/",
   "start_url": "/login/",
   "scope": "/",
@@ -11,15 +10,14 @@
   "theme_color": "#15803d",
   "icons": [
     {
-      "src": "/static/img/icons/icon-192.png",
+      "src": "/static/img/brand/netcash-icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/static/img/icons/icon-512.png",
+      "src": "/static/img/brand/netcash-icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ]
 }
-

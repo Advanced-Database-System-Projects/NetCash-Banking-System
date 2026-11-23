@@ -1,106 +1,360 @@
+{% extends "SysDataBase/base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amortization Schedule | Banking System</title>
-</head>
-<body>
+{% block title %}Amortization Schedule | NetCash{% endblock %}
 
-    <h1>Amortization Schedule</h1>
-    <p>View and manage monthly loan installments.</p>
+{% block extra_css %}
+<style>
+    /* Scoped to this page so other dashboards keep their existing styles. */
+    .amort-page .amort-hero {
+        background: linear-gradient(120deg, #15803d, #22c55e);
+        border-radius: 14px;
+        padding: 26px 30px;
+        color: #fff;
+    }
+    .amort-page .amort-hero h4,
+    .amort-page .amort-hero p,
+    .amort-page .amort-hero .amort-eyebrow { color: #fff; }
+    .amort-page .amort-eyebrow {
+        font-size: .74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+        opacity: .85;
+    }
+    .amort-page .amort-back {
+        background: #fff;
+        color: #15803d;
+        border: 1px solid rgba(255,255,255,.8);
+        font-weight: 600;
+    }
+    .amort-page .amort-back:hover { background: #f0fdf4; color: #166534; }
+    .amort-page .amort-stat {
+        border: 1px solid rgba(58, 53, 65, .08);
+        border-radius: 12px;
+        background: #fff;
+        padding: 18px 20px;
+        height: 100%;
+        box-shadow: 0 2px 12px rgba(58, 53, 65, .04);
+    }
+    .amort-page .amort-stat .label {
+        color: #6c6b7b;
+        font-size: .81rem;
+        margin-bottom: 7px;
+    }
+    .amort-page .amort-stat .value {
+        font-weight: 700;
+        font-size: 1.26rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        color: #3c3a4a;
+    }
+    .amort-page .amort-stat .value.green { color: #15803d; }
+    .amort-page .amort-table { min-width: 1000px; }
+    .amort-page .amort-table thead th {
+        background: #f5f6fa;
+        padding: 15px 14px;
+        text-transform: uppercase;
+        font-size: .72rem;
+        font-weight: 700;
+        white-space: nowrap;
+        letter-spacing: .035em;
+        color: #5e596e;
+    }
+    .amort-page .amort-table tbody td {
+        padding: 16px 14px;
+        vertical-align: middle;
+    }
+    .amort-page .amort-money { font-weight: 600; white-space: nowrap; }
+    .amort-page .amort-detail-toggle {
+        cursor: pointer;
+        list-style: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #15803d;
+        padding: 8px 12px;
+        color: #fff;
+        font-weight: 600;
+        font-size: .78rem;
+        white-space: nowrap;
+        user-select: none;
+    }
+    .amort-page .amort-detail-toggle::-webkit-details-marker { display: none; }
+    .amort-page .amort-detail-toggle:hover { background: #166534; }
+    .amort-page .amort-payment-form {
+        margin-top: 10px;
+        padding: 14px;
+        border: 1px solid #dceee1;
+        background: #f7fcf8;
+        border-radius: 10px;
+        width: 230px;
+        max-width: 100%;
+    }
+    .amort-page .amort-payment-form label {
+        display: block;
+        font-size: .78rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .amort-page .amort-payment-form .form-control,
+    .amort-page .amort-payment-form .form-select { font-size: .85rem; }
+    .amort-page .amort-payment-form .btn { width: 100%; }
+    .amort-page .amort-note {
+        background: #f0fdf4;
+        border: 1px solid #dcfce7;
+        border-radius: 10px;
+        padding: 13px 16px;
+        color: #166534;
+        font-size: .85rem;
+    }
+    @media (max-width: 575.98px) {
+        .amort-page .amort-hero { padding: 22px 18px; }
+        .amort-page .amort-back { width: 100%; }
+        .amort-page .amort-stat { padding: 14px 16px; }
+        .amort-page .amort-stat .value { font-size: 1.1rem; }
+    }
+</style>
+{% endblock %}
 
-    {% if messages %}
-        {% for message in messages %}
-            <p>{{ message }}</p>
-        {% endfor %}
-    {% endif %}
+{% block content %}
+<div class="amort-page">
 
-    <h3>Loan Information</h3>
+    <!-- Page heading and role-specific back navigation -->
+    <div class="amort-hero mb-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div>
+                <div class="amort-eyebrow mb-2">Loan Management</div>
+                <h4 class="fw-bold mb-2">Amortization Schedule</h4>
+                <p class="mb-0" style="opacity:.93;">
+                    Track installment dates, balances, and payment progress for Loan #{{ loan.id }}.
+                </p>
+            </div>
+            {% if request.user.roles.roles_name == "Borrower" %}
+                <a class="btn amort-back" href="{% url 'borrower_dashboard' %}">
+                    <i class="icon-base ri ri-arrow-left-line me-1"></i>
+                    Back to Dashboard
+                </a>
+            {% else %}
+                <a class="btn amort-back" href="{% url 'loan_list' %}">
+                    <i class="icon-base ri ri-arrow-left-line me-1"></i>
+                    Back to Loan Records
+                </a>
+            {% endif %}
+        </div>
+    </div>
 
-    <p>Loan ID: {{ loan.id }}</p>
-    <p>Borrower: {{ loan.loan_application.client_profile }}</p>
-    <p>Principal Amount: ₱{{ loan.principal_amount }}</p>
-    <p>Outstanding Balance: ₱{{ loan.outstanding_balance }}</p>
-    <p>Interest Rate: {{ loan.annual_interest_rate }}%</p>
-    <p>Loan Term: {{ loan.term_months }} months</p>
-    <p>Status: {{ loan.status }}</p>
+    <!-- Loan overview -->
+    <div class="card mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
+                <div>
+                    <h5 class="fw-semibold mb-1">Loan #{{ loan.id }} Overview</h5>
+                    <p class="text-muted mb-0 small">
+                        Borrower: {{ loan.loan_application.client_profile }}
+                    </p>
+                </div>
+                {% if loan.status == "Paid" %}
+                    <span class="badge bg-label-success">Fully Paid</span>
+                {% elif loan.status == "Active" %}
+                    <span class="badge bg-label-primary">Active</span>
+                {% elif loan.status == "Overdue" %}
+                    <span class="badge bg-label-danger">Overdue</span>
+                {% elif loan.status == "Approved" %}
+                    <span class="badge bg-label-warning">Approved — Not Disbursed</span>
+                {% else %}
+                    <span class="badge bg-label-secondary">{{ loan.status }}</span>
+                {% endif %}
+            </div>
 
-    <hr>
+            <div class="row g-3">
+                <div class="col-6 col-xl-3">
+                    <div class="amort-stat">
+                        <div class="label">Principal Amount</div>
+                        <div class="value">₱{{ loan.principal_amount|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="amort-stat">
+                        <div class="label">Outstanding Balance</div>
+                        <div class="value green">₱{{ loan.outstanding_balance|floatformat:2 }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="amort-stat">
+                        <div class="label">Annual Interest Rate</div>
+                        <div class="value">{{ loan.annual_interest_rate|floatformat:2 }}%</div>
+                    </div>
+                </div>
+                <div class="col-6 col-xl-3">
+                    <div class="amort-stat">
+                        <div class="label">Loan Term</div>
+                        <div class="value">{{ loan.term_months }} months</div>
+                    </div>
+                </div>
+            </div>
 
-    <h3>Monthly Installments</h3>
+            <p class="text-muted small mt-3 mb-0">
+                {% if loan.disbursement_date %}
+                    Disbursed on {{ loan.disbursement_date|date:"M d, Y" }}.
+                {% else %}
+                    Disbursement has not been recorded yet.
+                {% endif %}
+            </p>
+        </div>
+    </div>
 
-    <table border="1" cellpadding="10" cellspacing="0">
-        <thead>
-            <tr>
-                <th>Installment No.</th>
-                <th>Due Date</th>
-                <th>Principal Due</th>
-                <th>Interest Due</th>
-                <th>Total Due</th>
-                <th>Amount Paid</th>
-                <th>Status</th>
-                <th>Record Payment</th>
-            </tr>
-        </thead>
+    <!-- Installments -->
+    <div class="card">
+        <div class="card-header border-bottom px-4 py-3">
+            <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                <div>
+                    <h5 class="fw-semibold mb-1">Monthly Installments</h5>
+                    <p class="text-muted small mb-0">
+                        Review the due dates and payment status for each installment.
+                    </p>
+                </div>
+                {% if request.user.roles.roles_name == "Borrower" %}
+                    <a href="{% url 'loan_payment_list' %}" class="btn btn-sm btn-outline-success">
+                        <i class="icon-base ri ri-history-line me-1"></i>
+                        My Payment History
+                    </a>
+                {% endif %}
+            </div>
+        </div>
 
-        <tbody>
-            {% for schedule in schedules %}
-            <tr>
-                <td>{{ schedule.installment_no }}</td>
-                <td>{{ schedule.due_date|date:"M d, Y" }}</td>
-                <td>₱{{ schedule.principal_due }}</td>
-                <td>₱{{ schedule.interest_due }}</td>
-                <td>₱{{ schedule.total_due }}</td>
-                <td>₱{{ schedule.amount_paid }}</td>
-                <td>{{ schedule.status }}</td>
+        <div class="card-body px-4 pt-3 pb-0">
+            {% if request.user.roles.roles_name == "Borrower" %}
+                <div class="amort-note mb-3">
+                    <i class="icon-base ri ri-information-line me-1"></i>
+                    This schedule is view-only. Payments are recorded by authorized bank staff.
+                </div>
+            {% elif loan.status == "Approved" %}
+                <div class="amort-note mb-3">
+                    <i class="icon-base ri ri-information-line me-1"></i>
+                    The loan must be disbursed before installment payments can be recorded.
+                </div>
+            {% endif %}
+            <p class="small text-muted mb-3 d-lg-none">
+                <i class="icon-base ri ri-arrow-left-right-line me-1"></i>
+                Swipe the table horizontally to see all columns.
+            </p>
+        </div>
 
-                <td>
-                    {% if schedule.status != "Paid" and loan.status == "Active" %}
-                        <form method="POST"
-                              action="{% url 'loan_payment_create' schedule.id %}">
-                            {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 amort-table">
+                <thead>
+                    <tr>
+                        <th>Installment</th>
+                        <th>Due Date</th>
+                        <th>Principal Due</th>
+                        <th>Interest Due</th>
+                        <th>Total Due</th>
+                        <th>Amount Paid</th>
+                        <th>Status</th>
+                        {% if request.user.is_staff %}
+                            {% if request.user.roles.roles_name == "Admin" or request.user.roles.roles_name == "Loan Officer" %}
+                                <th>Payment Action</th>
+                            {% endif %}
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for schedule in schedules %}
+                        <tr>
+                            <td class="fw-semibold">#{{ schedule.installment_no }}</td>
+                            <td class="text-nowrap">{{ schedule.due_date|date:"M d, Y" }}</td>
+                            <td class="amort-money">₱{{ schedule.principal_due|floatformat:2 }}</td>
+                            <td class="amort-money">₱{{ schedule.interest_due|floatformat:2 }}</td>
+                            <td class="amort-money">₱{{ schedule.total_due|floatformat:2 }}</td>
+                            <td class="amort-money">₱{{ schedule.amount_paid|floatformat:2 }}</td>
+                            <td>
+                                {% if schedule.status == "Paid" %}
+                                    <span class="badge bg-label-success">Paid</span>
+                                {% elif schedule.status == "Partial" %}
+                                    <span class="badge bg-label-info">Partial</span>
+                                {% elif schedule.status == "Overdue" %}
+                                    <span class="badge bg-label-danger">Overdue</span>
+                                {% elif schedule.status == "Pending" %}
+                                    <span class="badge bg-label-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-label-secondary">{{ schedule.status }}</span>
+                                {% endif %}
+                            </td>
 
-                            <input
-                                type="number"
-                                name="amount"
-                                min="0.01"
-                                step="0.01"
-                                placeholder="Payment amount"
-                                required
-                            >
-
-                            <select name="payment_method" required>
-                                <option value="">Select Method</option>
-                                <option value="Cash">Cash</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="Online Payment">Online Payment</option>
-                            </select>
-
-                            <button type="submit">
-                                Record Payment
-                            </button>
-                        </form>
-                    {% else %}
-                        No Payment Action
-                    {% endif %}
-                </td>
-            </tr>
-
-            {% empty %}
-            <tr>
-                <td colspan="8">
-                    No amortization schedules found.
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <br>
-
-    <a href="{% url 'loan_list' %}">Back to Loan Records</a>
-
-</body>
-</html>
+                            {% if request.user.is_staff %}
+                                {% if request.user.roles.roles_name == "Admin" or request.user.roles.roles_name == "Loan Officer" %}
+                                    <td>
+                                        {% if schedule.status != "Paid" and loan.status == "Active" %}
+                                            <details>
+                                                <summary class="amort-detail-toggle">
+                                                    <i class="icon-base ri ri-bank-card-line me-1"></i>
+                                                    Record Payment
+                                                </summary>
+                                                <form class="amort-payment-form"
+                                                      method="post"
+                                                      action="{% url 'loan_payment_create' schedule.id %}">
+                                                    {% csrf_token %}
+                                                    <div class="mb-2">
+                                                        <label for="amount-{{ schedule.id }}">Payment Amount (₱)</label>
+                                                        <input class="form-control"
+                                                               id="amount-{{ schedule.id }}"
+                                                               type="number"
+                                                               name="amount"
+                                                               min="0.01"
+                                                               step="0.01"
+                                                               placeholder="0.00"
+                                                               required>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="method-{{ schedule.id }}">Payment Method</label>
+                                                        <select class="form-select"
+                                                                id="method-{{ schedule.id }}"
+                                                                name="payment_method"
+                                                                required>
+                                                            <option value="">Choose method</option>
+                                                            <option value="Cash">Cash</option>
+                                                            <option value="Bank Transfer">Bank Transfer</option>
+                                                            <option value="Online Payment">Online Payment</option>
+                                                        </select>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-success btn-sm">
+                                                        Confirm Payment
+                                                    </button>
+                                                </form>
+                                            </details>
+                                        {% elif schedule.status == "Paid" %}
+                                            <span class="text-success small fw-semibold">
+                                                <i class="icon-base ri ri-check-line me-1"></i>Completed
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">Not available</span>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                            {% endif %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td class="text-center py-5 text-muted"
+                                {% if request.user.is_staff %}
+                                    {% if request.user.roles.roles_name == "Admin" or request.user.roles.roles_name == "Loan Officer" %}
+                                        colspan="8"
+                                    {% else %}
+                                        colspan="7"
+                                    {% endif %}
+                                {% else %}
+                                    colspan="7"
+                                {% endif %}>
+                                <i class="icon-base ri ri-calendar-line d-block mb-2"
+                                   style="font-size: 2rem;"></i>
+                                No amortization schedule has been generated for this loan yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

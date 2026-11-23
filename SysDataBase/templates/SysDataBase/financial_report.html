@@ -1,0 +1,100 @@
+{% extends "SysDataBase/base.html" %}
+{% block title %}Financial Reports | NetCash{% endblock %}
+{% block content %}
+<div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">Financial Reports</h4>
+        <p class="text-muted mb-0">Recorded income, expenses, loan performance, and ledger summary.</p>
+    </div>
+    <span class="badge bg-label-success"><i class="icon-base ri ri-file-chart-line me-1"></i>Management Reporting</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form class="row g-3 align-items-end" method="get" action="{% url 'financial_report' %}">
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="start-date">From Date</label>
+                <input type="date" id="start-date" name="start" value="{{ start|date:'Y-m-d' }}" class="form-control" required>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="end-date">To Date</label>
+                <input type="date" id="end-date" name="end" value="{{ end|date:'Y-m-d' }}" class="form-control" required>
+            </div>
+            <div class="col-12 col-md-4 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-success"><i class="icon-base ri ri-filter-line me-1"></i>Apply</button>
+                <button type="submit" name="download" value="pdf" class="btn btn-outline-success"><i class="icon-base ri ri-file-pdf-2-line me-1"></i>Export PDF</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body"><p class="text-muted mb-2">Loan Interest Income</p><h4 class="mb-0 text-success">₱{{ interest_income|floatformat:2 }}</h4><small>Selected period</small></div></div></div>
+    <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body"><p class="text-muted mb-2">Savings Interest Expense</p><h4 class="mb-0">₱{{ savings_interest_expense|floatformat:2 }}</h4><small>Selected period</small></div></div></div>
+    <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body"><p class="text-muted mb-2">Net Interest Result</p><h4 class="mb-0 {% if net_interest_result < 0 %}text-danger{% else %}text-success{% endif %}">₱{{ net_interest_result|floatformat:2 }}</h4><small>Interest income − interest expense</small></div></div></div>
+    <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body"><p class="text-muted mb-2">Outstanding Loan Principal</p><h4 class="mb-0">₱{{ outstanding_principal|floatformat:2 }}</h4><small>Current portfolio</small></div></div></div>
+</div>
+
+<div class="alert alert-warning" role="alert">
+    <strong>Reporting scope:</strong> This is an interest-based income/expense summary from recorded ledger entries, <strong>not a complete profit/loss statement</strong>. Operating expenses, taxes and unrecorded income are not modeled. Loan counts and outstanding balances show the <strong>current portfolio</strong>, while movements and ledger entries use the selected date range.
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="card h-100"><div class="card-header"><h5 class="mb-0">Loan Activity — Selected Period</h5></div>
+            <div class="table-responsive"><table class="table table-hover mb-0">
+                <thead><tr><th>Metric</th><th>Count</th><th class="text-end">Amount</th></tr></thead>
+                <tbody>
+                    <tr><td>Disbursed loans</td><td>{{ disbursement_count }}</td><td class="text-end">₱{{ disbursement_total|floatformat:2 }}</td></tr>
+                    <tr><td>Completed loan payments</td><td>{{ payment_count }}</td><td class="text-end">₱{{ repayment_total|floatformat:2 }}</td></tr>
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card h-100"><div class="card-header"><h5 class="mb-0">Loan Portfolio — Current</h5></div>
+            <div class="table-responsive"><table class="table table-hover mb-0">
+                <thead><tr><th>Status</th><th class="text-end">Count</th></tr></thead>
+                <tbody>
+                    <tr><td>Approved, not disbursed</td><td class="text-end">{{ approved_count }}</td></tr>
+                    <tr><td>Active, not overdue</td><td class="text-end">{{ current_active_count }}</td></tr>
+                    <tr><td>Overdue (including past-due installments)</td><td class="text-end">{{ overdue_count }}</td></tr>
+                    <tr><td>Fully paid</td><td class="text-end">{{ paid_count }}</td></tr>
+                    <tr><td class="fw-semibold">Outstanding balance on overdue loans</td><td class="text-end fw-semibold">₱{{ overdue_balance|floatformat:2 }}</td></tr>
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex flex-column flex-sm-row justify-content-between gap-2"><h5 class="mb-0">General Ledger Summary</h5>
+        {% if ledger_balanced %}<span class="badge bg-label-success">Debits = Credits</span>{% else %}<span class="badge bg-label-danger">Ledger difference detected</span>{% endif %}
+    </div>
+    <div class="table-responsive"><table class="table table-hover mb-0">
+        <thead><tr><th>Account Code</th><th class="text-end">Debit</th><th class="text-end">Credit</th></tr></thead>
+        <tbody>
+            {% for row in ledger %}
+            <tr><td>{{ row.account_code }}</td><td class="text-end">₱{{ row.total_debit|floatformat:2 }}</td><td class="text-end">₱{{ row.total_credit|floatformat:2 }}</td></tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-4">No ledger entries in this date range.</td></tr>
+            {% endfor %}
+            <tr class="fw-bold"><td>Total</td><td class="text-end">₱{{ total_debit|floatformat:2 }}</td><td class="text-end">₱{{ total_credit|floatformat:2 }}</td></tr>
+        </tbody>
+    </table></div>
+</div>
+
+<div class="card">
+    <div class="card-header"><h5 class="mb-0">Overdue Loan Accounts — Current</h5><p class="text-muted mb-0 small">Includes loans with an installment past its due date and not fully paid.</p></div>
+    <div class="table-responsive"><table class="table table-hover mb-0">
+        <thead><tr><th>Loan ID</th><th>Borrower</th><th class="text-end">Outstanding Principal</th></tr></thead>
+        <tbody>
+        {% for loan in overdue_loans %}
+            <tr><td>#{{ loan.id }}</td><td>{{ loan.loan_application.client_profile }}</td><td class="text-end">₱{{ loan.outstanding_balance|floatformat:2 }}</td></tr>
+        {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-4">No overdue loans found.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table></div>
+</div>
+{% endblock %}

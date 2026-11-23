@@ -1,7 +1,7 @@
 
 {% extends "SysDataBase/base.html" %}
 
-{% block title %}Loan Applications | Banking System{% endblock %}
+{% block title %}Loan Applications | NetCash{% endblock %}
 
 {% block content %}
 
@@ -107,6 +107,44 @@
                                 </span>
                             {% endif %}
                         {% endwith %}
+
+                        <!-- Automated Eligibility Decision -->
+                        {% if application.eligibility_status %}
+
+                            <div class="mt-2">
+
+                                {% if application.eligibility_status == "Auto-Approved" %}
+    <span class="badge bg-label-success">Auto-Approved</span>
+{% elif application.eligibility_status == "Auto-Approval Candidate" %}
+
+                                    <span class="badge bg-label-success">
+                                        Auto-Approval Candidate
+                                    </span>
+
+                                {% elif application.eligibility_status == "Needs Manual Review" %}
+
+                                    <span class="badge bg-label-warning">
+                                        Needs Manual Review
+                                    </span>
+
+                                {% elif application.eligibility_status == "Ready for Manual Approval" %}
+
+                                    <span class="badge bg-label-info">
+                                        Ready for Manual Approval
+                                    </span>
+
+                                {% elif application.eligibility_status == "Not Eligible" %}
+
+                                    <span class="badge bg-label-danger">
+                                        Not Eligible
+                                    </span>
+
+                                {% endif %}
+
+                            </div>
+
+                        {% endif %}
+
                     </td>
 
                     <!-- Application Date -->

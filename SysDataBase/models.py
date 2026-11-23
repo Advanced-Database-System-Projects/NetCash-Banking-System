@@ -581,6 +581,7 @@ class Notifications(BaseModel):
     class Channel(models.TextChoices):
         EMAIL = 'Email', 'Email'
         SMS = 'SMS', 'SMS'
+        IN_APP = 'In-App', 'In-App'  # AUTOMATED BANKINGSYS IN-APP NOTIFICATIONS
 
     class NotificationStatus(models.TextChoices):
         PENDING = 'Pending', 'Pending'
