@@ -54,6 +54,10 @@ The system helps manage borrower information, savings accounts, loan application
 - Loan payment and amortization records
 - Downloadable loan agreement PDF
 - Transaction history, audit logs, and notifications
+- OpenStreetMap API
+- RESTful API and Token Authentication <br>
+To get token, first register an account then go to local-host/api/token/ or Deployed url/api/token to input both your username and password to get your access and refresh key. <br>
+To access directly, go to local-host/api/ or Deployed url/api/ then login your account in the top right of the corner, it will show you a list of api that you can access or view.
 
 ## User Roles
 
@@ -63,9 +67,25 @@ The system helps manage borrower information, savings accounts, loan application
 | **Staff** | Manages borrower records, verifies identities, assists with savings operations, and reviews and processes loan applications. |
 | **Admin** | Manages system users and roles and oversees the overall system. |
 
+## Instructions
+
+- Borrower account
+<ol>
+  <li> Go to Deployed url: https://bankingsys-zvlz.onrender.com/login/ </li>
+  <li> Register and fill up the required forms to create a borrower account. </li>
+  <li> Login to use system features. </li>
+</ol>
+
+- Admin account
+
+<ol>
+  <li> Login using Username: Admin and Password: passwords to use an admin account and access the admin dashboard. </li>
+  <li> Go to https://bankingsys-zvlz.onrender.com/admin/ and use the same username and password to access Django admin dashboard or Administration panel. </li>
+</ol>
+
+Data will reset after 15 minutes of inactiveness
 
 ## Authors & GitHub Profiles
-
 
 
 - **Balofiños, Jane Pauline** [janepaulineb](https://github.com/janepaulineb)
@@ -74,5 +94,3 @@ The system helps manage borrower information, savings accounts, loan application
 - **Ibarra, Gabriel Jansmhir** [cojjeeee](https://github.com/cojjeeee)
 
 
-
->>>>>>> coj
