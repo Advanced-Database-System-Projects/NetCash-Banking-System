@@ -1,6 +1,7 @@
 
 from django.urls import path
 from . import views
+from .loan_agreement_download import download_loan_agreement
 from . import financial_reports
 from . import audit_views
 
@@ -49,6 +50,8 @@ urlpatterns = [
     "savings/transactions/",
     views.savings_transaction_list,
     name="savings_transaction_list"),
+    path("loans/records/<int:loan_id>/agreement/download/",
+         download_loan_agreement, name="loan_agreement_download"),
     path("loans/records/", views.loan_list, name="loan_list"),
     #temporary path for testing
     path("ui-preview/", views.ui_preview, name="ui_preview"),

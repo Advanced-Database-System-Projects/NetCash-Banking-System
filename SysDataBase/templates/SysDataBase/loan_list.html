@@ -137,6 +137,15 @@
 
                     <!-- ACTIONS -->
                     <td>
+{% if user.is_superuser or user.roles.roles_name == "Admin" %}
+                            {% if loan.loan_application.agreement %}
+                                <a href="{% url 'loan_agreement_download' loan.id %}"
+                                   class="btn btn-sm btn-outline-success mb-2">
+                                    Download Loan Agreement
+                                </a>
+                            {% endif %}
+                        {% endif %}
+
                         {% if loan.status == "Approved" %}
 
                             <!-- DISBURSE LOAN FORM -->

@@ -1090,7 +1090,7 @@ def generate_loan_agreement(application, loan):
     borrower_name = f"{client.first_name} {client.last_name}"
 
     content.append(
-        Paragraph("SAMPLE LOAN AGREEMENT", styles["Title"])
+        Paragraph("LOAN AGREEMENT", styles["Title"])
     )
     content.append(Spacer(1, 10))
 

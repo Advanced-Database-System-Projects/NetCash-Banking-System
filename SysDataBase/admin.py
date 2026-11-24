@@ -1,3 +1,5 @@
+from django.urls import reverse
+from django.utils.html import format_html
 from django import forms
 from django.contrib import admin, messages
 from django.db import transaction
@@ -42,7 +44,50 @@ class AuditLogReadOnlyAdmin(admin.ModelAdmin):
 
 admin.site.register(Savings_account)
 admin.site.register(Loan_application)
-admin.site.register(Loan_agreement)
+@admin.register(Loan_agreement)
+class LoanAgreementDownloadAdmin(admin.ModelAdmin):
+    # View/download agreements in Django Admin; do not edit or delete them.
+
+    list_display = ("agreement_number", "loan_application", "download_pdf")
+    search_fields = (
+        "agreement_number",
+        "loan_application__client_profile__first_name",
+        "loan_application__client_profile__last_name",
+    )
+    readonly_fields = ("agreement_number", "loan_application", "signed_at", "created_at")
+
+    def _is_authorized(self, request):
+        user = request.user
+        role = getattr(getattr(user, "roles", None), "roles_name", None)
+        return (
+            user.is_authenticated and user.is_active and user.is_staff
+            and (user.is_superuser or role == "Admin")
+        )
+
+    def has_module_permission(self, request):
+        return self._is_authorized(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._is_authorized(request)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Loan Agreement PDF")
+    def download_pdf(self, obj):
+        try:
+            loan = obj.loan_application.loan
+        except Loans.DoesNotExist:
+            return "No loan record"
+        url = reverse("loan_agreement_download", args=[loan.pk])
+        return format_html('<a href="{}">Download PDF</a>', url)
+
 admin.site.register(Loans)
 admin.site.register(Amortization_schedule)
 admin.site.register(Loan_payments)

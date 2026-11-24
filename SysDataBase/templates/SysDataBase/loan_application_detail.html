@@ -21,6 +21,17 @@
     </a>
 </div>
 
+{% if user.is_superuser or user.roles.roles_name == "Admin" %}
+    {% if application.agreement %}
+        <div class="mb-4">
+            <a href="{% url 'loan_agreement_download' application.loan.id %}"
+               class="btn btn-outline-success">
+                Download Loan Agreement PDF
+            </a>
+        </div>
+    {% endif %}
+{% endif %}
+
 <!-- APPLICATION INFORMATION -->
 <div class="card mb-4">
 
